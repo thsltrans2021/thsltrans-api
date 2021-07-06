@@ -1,4 +1,4 @@
-"""thsltrans_api URL Configuration
+"""rbmt_system URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.2/topics/http/urls/
@@ -19,5 +19,5 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('thsltrans/', include('thsltrans_rbmt.urls')),
+    path('thsltrans/', include('api.urls')),
 ]
