@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+# TODO: define models for request, response, and db
