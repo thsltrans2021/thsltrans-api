@@ -5,6 +5,8 @@ Related functions such as registering routes and initializing database.
 import os
 
 from flask import Flask
+from dotenv import dotenv_values
+from dirs import ROOT_DIR
 
 
 def create_app(test_config=None) -> Flask:
@@ -17,7 +19,9 @@ def create_app(test_config=None) -> Flask:
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
-        app.config.from_pyfile('config.py', silent=True)
+        # app.config.from_pyfile('config.py', silent=True)
+        config = dotenv_values(f'{ROOT_DIR}/.env')
+        app.config.from_mapping(config)
     else:
         app.config.from_mapping(test_config)
 
@@ -29,6 +33,9 @@ def create_app(test_config=None) -> Flask:
 
     with app.app_context():
         from api.routes import register_routes
+        from api.db import init_database
+
+        init_database(app)
         register_routes(app)
 
     return app
