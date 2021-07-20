@@ -32,11 +32,21 @@ def add_words():
     }), 201
 
 
-# TODO: use query param
+@dictionary.route('/words/word', methods=['POST'])
 def edit_words():
-    pass
+    word = request.args.get('word')
+    return word, 201
 
 
-# TODO: use query param
+@dictionary.route('/words/word', methods=['GET'])
 def get_word():
-    pass
+    word = request.args.get('word')
+    if word is None:
+        return jsonify({
+            'message': 'Missing some parameter(s)'
+        }), 400
+
+    from api.db import DB
+    eng2signs: Collection = DB.eng2signs
+    result = eng2signs.find_one({'english': word})
+    return str(result), 200
