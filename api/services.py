@@ -1,5 +1,6 @@
 from flask import Request
 from typing import List
+from api.models import Eng2Sign, SignGloss
 
 
 def validate_dict_request_body(req: Request) -> bool:
@@ -14,20 +15,16 @@ def validate_dict_request_body(req: Request) -> bool:
         return False
 
 
-def request_body_to_eng2sign_schema(req: Request) -> List:
-    eng2sign_schemas = []
+def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
+    eng2signs = []
     req_body = dict(req.json)
     for wp in req_body['word_pairs']:
-        eng2sign_schema = {
-            'english': wp['word'],
-            'sign_glosses': {
-                f'gloss_{req_body["gloss_lang"]}': wp['gloss'],
-            },
-            'context': None,
-        }
+        eng2sign = Eng2Sign(english=wp['word'])
+        gloss = SignGloss()
+        setattr(gloss, f'gloss_{req_body["gloss_lang"]}', wp['gloss'])
         try:
-            eng2sign_schema['context'] = wp['context']
+            eng2sign.context = wp['context']
         except KeyError:
             pass
-        eng2sign_schemas.append(eng2sign_schema)
-    return eng2sign_schemas
+        eng2signs.append(eng2sign)
+    return eng2signs

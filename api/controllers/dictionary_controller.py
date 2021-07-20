@@ -1,7 +1,6 @@
 from flask import Blueprint, request
 from flask import jsonify
-from pymongo.collection import Collection
-from api.services import validate_dict_request_body, request_body_to_eng2sign_schema
+from api.services import validate_dict_request_body, request_body_to_eng2sign
 
 dictionary = Blueprint('dictionary', __name__)
 
@@ -16,19 +15,16 @@ def dictionary_index():
 
 @dictionary.route('/words', methods=['POST'])
 def add_words():
-    from api.db import DB
-
     if not validate_dict_request_body(request):
         return jsonify({
             'message': 'Missing some field(s) in request body'
         }), 400
 
-    eng2signs: Collection = DB.eng2signs
-    doc = request_body_to_eng2sign_schema(request)
-    result = eng2signs.insert_many(doc)
+    eng2signs = request_body_to_eng2sign(request)
+    results = map(lambda e: e.save(), eng2signs)
     return jsonify({
         'message': 'Success',
-        'data': [str(inserted_id) for inserted_id in result.inserted_ids]
+        'ids': [str(eng2sign.id) for eng2sign in results]
     }), 201
 
 
@@ -45,8 +41,4 @@ def get_word():
         return jsonify({
             'message': 'Missing some parameter(s)'
         }), 400
-
-    from api.db import DB
-    eng2signs: Collection = DB.eng2signs
-    result = eng2signs.find_one({'english': word})
-    return str(result), 200
+    return 200
