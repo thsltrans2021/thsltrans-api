@@ -1,6 +1,8 @@
 from flask import Blueprint, request
 from flask import jsonify
-from api.services import validate_dict_request_body, request_body_to_eng2sign
+from api.services import validate_dict_request_body, request_body_to_eng2sign, eng2sign_to_json
+from api.models import Eng2Sign
+from mongoengine import QuerySet
 
 dictionary = Blueprint('dictionary', __name__)
 
@@ -41,4 +43,8 @@ def get_word():
         return jsonify({
             'message': 'Missing some parameter(s)'
         }), 400
-    return 200
+    results: QuerySet = Eng2Sign.objects(english=word)
+    return jsonify({
+        'message': 'Success',
+        'data': [eng2sign_to_json(r) for r in results]
+    }), 200

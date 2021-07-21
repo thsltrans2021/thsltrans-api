@@ -1,6 +1,7 @@
 from flask import Request
-from typing import List
+from typing import List, Dict
 from api.models import Eng2Sign, SignGloss
+import json
 
 
 def validate_dict_request_body(req: Request) -> bool:
@@ -29,3 +30,10 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
             pass
         eng2signs.append(eng2sign)
     return eng2signs
+
+
+def eng2sign_to_json(eng2sign: Eng2Sign) -> Dict:
+    eng2sign_dict = json.loads(eng2sign.to_json())
+    del eng2sign_dict['_id']
+    del eng2sign_dict['sign_glosses']['_cls']
+    return eng2sign_dict
