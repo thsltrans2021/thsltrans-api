@@ -22,6 +22,7 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
         eng2sign = Eng2Sign(english=wp['word'])
         gloss = SignGloss()
         setattr(gloss, f'gloss_{req_body["gloss_lang"]}', wp['gloss'])
+        eng2sign.sign_glosses = gloss
         try:
             eng2sign.context = wp['context']
         except KeyError:

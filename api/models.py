@@ -5,7 +5,7 @@ from mongoengine import *
 
 class SignGloss(DynamicEmbeddedDocument):
     meta = {'allow_inheritance': True}
-    gloss_en = StringField(required=True)
+    gloss_en = StringField()
 
 
 class Eng2Sign(Document):
