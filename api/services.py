@@ -1,6 +1,8 @@
 from flask import Request
 from typing import List, Dict
 from api.models import Eng2Sign, SignGloss
+from mongoengine import QuerySet
+
 import json
 
 
@@ -29,14 +31,22 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
     for wp in req_body['data']:
         eng2sign = Eng2Sign(english=wp['word'])
         gloss = SignGloss()
+
+        result: QuerySet = Eng2Sign.objects(english=wp['word'])[:1]
+        if result:
+            eng2sign = result[0]
+            gloss = eng2sign.sign_glosses
+
         for key in wp.keys():
             if 'gloss' in key:
                 setattr(gloss, key, wp[key])
         eng2sign.sign_glosses = gloss
+
         try:
             eng2sign.context = wp['context']
         except KeyError:
             pass
+
         eng2signs.append(eng2sign)
     return eng2signs
 
