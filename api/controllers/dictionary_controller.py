@@ -17,6 +17,7 @@ def dictionary_index():
 
 @dictionary.route('/words', methods=['POST'])
 def add_words():
+    """Add and update the specified words"""
     if not validate_dict_request_body(request):
         return jsonify({
             'message': 'Missing some field(s) in request body'
@@ -30,14 +31,9 @@ def add_words():
     }), 201
 
 
-@dictionary.route('/words/word', methods=['POST'])
-def edit_words():
-    word = request.args.get('word')
-    return word, 201
-
-
 @dictionary.route('/words/word', methods=['GET'])
 def get_word():
+    """Search sign glosses of the specified word"""
     word = request.args.get('word')
     if word is None:
         return jsonify({
