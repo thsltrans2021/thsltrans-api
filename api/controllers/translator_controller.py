@@ -13,11 +13,12 @@ def translator_index():
     })
 
 
-@translator.route('/404', methods=['GET'])
-def example_404():
+@translator.route('/translate', methods=['POST'])
+def get_translation():
     return jsonify({
-        'message': 'There is no such a thing here'
-    }), 404
+        'message': 'Success',
+        'data': []
+    }), 200
 
 
 @translator.route('/create', methods=['GET'])
@@ -31,13 +32,3 @@ def test_db():
     return jsonify({
         'id': str(eng2sign.id)
     }), 201
-
-
-@translator.route('/json', methods=['GET'])
-def test_json():
-    pass
-    # from api.models import ResponseBody
-    #
-    # res = ResponseBody('this is message', 'this is data')
-    # # TypeError: Object of type ResponseBody is not JSON serializable
-    # return jsonify(res), 200
