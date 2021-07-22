@@ -19,9 +19,12 @@ def create_app(test_config=None) -> Flask:
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
-        # app.config.from_pyfile('config.py', silent=True)
-        config = dotenv_values(f'{ROOT_DIR}/.env')
-        app.config.from_mapping(config)
+        if os.path.exists(f'{ROOT_DIR}/.env'):
+            config = dotenv_values(f'{ROOT_DIR}/.env')
+            app.config.from_mapping(config)
+        else:
+            # for deployment
+            app.config.from_envvar("MONGO_URI")
     else:
         app.config.from_mapping(test_config)
 
