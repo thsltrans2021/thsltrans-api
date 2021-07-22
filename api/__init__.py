@@ -23,8 +23,8 @@ def create_app(test_config=None) -> Flask:
             config = dotenv_values(f'{ROOT_DIR}/.env')
             app.config.from_mapping(config)
         else:
-            # for deployment
-            app.config.from_envvar("MONGO_URI")
+            # register env variables for deployment
+            app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
     else:
         app.config.from_mapping(test_config)
 
