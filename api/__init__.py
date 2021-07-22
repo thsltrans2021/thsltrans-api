@@ -34,8 +34,10 @@ def create_app(test_config=None) -> Flask:
     with app.app_context():
         from api.routes import register_routes
         from api.db import init_database
+        from api.commands.server import register_commands
 
         init_database(app)
         register_routes(app)
+        register_commands(app)
 
     return app
