@@ -1,12 +1,15 @@
 # thsltrans-api
 Rule-based system implemented as API service for ThSL translator web application (SKE senior project 2021, Kasetsart University)
 
+Deployed at https://thsltrans-api.herokuapp.com/
+
 ## Requirements
 * Python version 3.8 or later
 
 ### Dependencies
 * [Flask](https://flask.palletsprojects.com/en/2.0.x/)
-* [PyMongo](https://pymongo.readthedocs.io/en/stable/)
+* [MongoEngine](http://mongoengine.org/)
+* [Spacy](https://spacy.io/)
 
 ## How to run the server locally
 1. Create `.env` file at the root directory, `thsltrans-api`. 
@@ -18,7 +21,7 @@ See the [Setting up environment variables](#setting-up-environment-variables) se
     ```
 2. Go to the root directory, then run the following command
     ```shell script
-    py main.py
+    py app.py
     ```
    * This command will run Flask application at http://127.0.0.1:5000/
 
