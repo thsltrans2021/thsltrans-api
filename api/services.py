@@ -25,6 +25,22 @@ def validate_dict_request_body(req: Request) -> bool:
         return False
 
 
+def validate_trans_request_body(req: Request) -> bool:
+    try:
+        req_body = dict(req.json)
+        paragraphs = req_body['data']
+        if not paragraphs:
+            return False
+        for k in paragraphs.keys():
+            if k[0] != 'p':
+                return False
+    except TypeError:
+        return False
+    except KeyError:
+        return False
+    return True
+
+
 def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
     eng2signs = []
     req_body = dict(req.json)
