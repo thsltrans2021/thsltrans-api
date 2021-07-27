@@ -1,6 +1,6 @@
 from flask import Request
 from typing import List, Dict
-from api.models import Eng2Sign, SignGloss
+from api.models import Eng2Sign, SignGloss, TextData
 from mongoengine import QuerySet
 
 import json
@@ -65,6 +65,15 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
 
         eng2signs.append(eng2sign)
     return eng2signs
+
+
+def request_body_to_text_data(req: Request) -> TextData:
+    req_body = dict(req.json)
+    data = req_body['data']
+    trans = TextData()
+    for key in data.keys():
+        trans.original.append(data[key])
+    return trans
 
 
 def eng2sign_to_json(eng2sign: Eng2Sign) -> Dict:
