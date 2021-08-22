@@ -16,7 +16,7 @@ def translator_index():
 
 
 @translator.route('/translate', methods=['POST'])
-def get_translation():
+def generate_translation():
     if not validate_trans_request_body(request):
         return jsonify({
             'message': 'Missing some field(s) in request body'
