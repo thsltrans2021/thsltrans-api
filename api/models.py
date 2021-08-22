@@ -1,5 +1,6 @@
 from mongoengine import *
 from typing import List
+from spacy.tokens import Span
 
 # TODO: define models for request, response, and db
 """
@@ -33,15 +34,21 @@ class Eng2Sign(Document):
 
 
 class TextData:
+    """
+    :ivar original: A list of the paragraphs of English text
+    :ivar processed_data: A list of the processed English sentences.
+    :ivar thsl_translation: A list of ThSL sentences, each sentence contains a list of ThSL words.
+    """
+
     def __init__(self, original=None):
         """
-        :param original: a list of English sentences
-        translation: [["ANT", "WALK"], [...]]
+        :param original: a list of the paragraphs of English sentences
         """
         if original is None:
             original = []
-        self.original = original
-        self.translation = []
+        self.original: List[str] = original
+        self.processed_data: List[List[Span]] = []
+        self.thsl_translation: List[List[str]] = []
 
     def __str__(self):
         text = ''
@@ -51,10 +58,10 @@ class TextData:
 
     def prepare_response_data(self) -> List[dict]:
         data = []
-        for i in range(len(self.translation)):
+        for i in range(len(self.thsl_translation)):
             data.append({
                 'p_number': i + 1,
                 'original': self.original[i],
-                'translation': self.translation[i]
+                'thsl_translation': self.thsl_translation[i]
             })
         return data
