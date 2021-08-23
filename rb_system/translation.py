@@ -1,6 +1,6 @@
 from typing import List
 from rb_system.rules import br1_transitive_sentence
-from rb_system.nlp_tools import perform_nlp_process
+from rb_system.nlp_tools import perform_nlp_process, is_transitive_sentence
 from api.models import TextData
 from spacy.tokens import Span
 
@@ -11,9 +11,11 @@ The translation functions that work on a sentence level only
 """
 
 
-def apply_rules(text: Span) -> List[str]:
+def apply_rules(sentence: Span) -> List[str]:
     """Return a list of rearranged english words"""
-    words = br1_transitive_sentence(text)
+    words = ['Nope']
+    if is_transitive_sentence(sentence):
+        words = br1_transitive_sentence(sentence)
     # can we apply a pattern of the rule to categorize a sentence
     sign_glosses = map_english_to_sign_gloss(words)
     return sign_glosses

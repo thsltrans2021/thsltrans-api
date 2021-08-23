@@ -1,5 +1,5 @@
 import spacy
-from spacy.tokens import Doc, Token
+from spacy.tokens import Doc, Token, Span
 from spacy import Language
 from api.models import TextData
 
@@ -23,10 +23,18 @@ def perform_nlp_process(text_data: TextData):
         text_data.processed_data.append(sentence)
 
 
-def contain_transitive_verb(sentence: str) -> bool:
+def is_transitive_sentence(sentence: Span) -> bool:
     # a children node of a verb contains dobj
     # https://stackoverflow.com/questions/49271730/how-to-parse-verbs-using-spacy
-    return False
+    has_verb = False
+    has_direct_object = False
+    token: Token
+    for token in sentence:
+        if token.pos_ == 'VERB':
+            has_verb = True
+        elif token.dep_ == 'dobj':
+            has_direct_object = True
+    return has_verb and has_direct_object
 
 
 if __name__ == '__main__':
@@ -51,7 +59,8 @@ if __name__ == '__main__':
                 if not token.is_punct:
                     print(f'{token.lemma_:<10}{token.pos_:<7}{token.tag_:<5}{token.dep_:<10}{spacy.explain(token.dep_)}')
 
-            print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
+            print(f'Is transitive sentence? {is_transitive_sentence(s)}')
+            # print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
             print()
         print('----------------------------')
 
