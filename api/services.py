@@ -59,7 +59,8 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
         eng2sign.sign_glosses = gloss
 
         try:
-            eng2sign.context = wp['context']
+            eng2sign.en_pos = wp['en_pos']
+            eng2sign.contexts = wp['contexts']
         except KeyError:
             pass
 

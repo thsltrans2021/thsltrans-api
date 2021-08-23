@@ -11,7 +11,7 @@ Request body of the endpoint `add_words()`
             "word": "ant",
             "gloss_en": "ANT",
             "gloss_th": "มด",
-            "context": ""
+            "contexts": [""]
         }
     ]
 }
@@ -25,7 +25,8 @@ class SignGloss(DynamicEmbeddedDocument):
 
 class Eng2Sign(Document):
     english = StringField(required=True)
-    context = StringField()
+    en_pos = StringField()
+    contexts = ListField()
     sign_glosses = EmbeddedDocumentField(SignGloss)
 
     meta = {
