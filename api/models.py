@@ -1,6 +1,6 @@
 from mongoengine import *
 from typing import List
-from spacy.tokens import Span
+from rb_system.types import Paragraph
 
 # TODO: define models for request, response, and db
 """
@@ -48,8 +48,9 @@ class TextData:
         if original is None:
             original = []
         self.original: List[str] = original
-        self.processed_data: List[List[Span]] = []
-        self.thsl_translation: List[List[str]] = []
+        # [[[Hello], [This, is, your, friend, A.]], [[Minna, hit, Joe, when, the, teacher, turned]]]
+        self.processed_data: List[Paragraph] = []
+        self.thsl_translation: List[List[List[str]]] = []
 
     def __str__(self):
         text = ''

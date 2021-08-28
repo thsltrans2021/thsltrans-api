@@ -3,6 +3,7 @@ from spacy.tokens import Doc, Token, Span
 from spacy import Language, displacy
 from api.models import TextData
 from typing import List
+from rb_system.types import Paragraph
 
 """
 python -m doctest -v rb_system/nlp_tools.py
@@ -21,11 +22,15 @@ def perform_nlp_process(text_data: TextData):
     # Split paragraph into a list of sentences
     for paragraph in text_data.original:
         p_doc: Doc = nlp(paragraph)
-        sentence = list(p_doc.sents)
-        text_data.processed_data.append(sentence)
+        sentences = list(p_doc.sents)
+        processed_paragraph: Paragraph = []
+        for sentence in sentences:
+            sentence = remove_punctuations(sentence)
+            processed_paragraph.append(sentence)
+        text_data.processed_data.append(processed_paragraph)
 
 
-def is_transitive_sentence(sentence: Span) -> bool:
+def is_transitive_sentence(sentence: List[Token]) -> bool:
     # a children node of a verb contains dobj
     # https://stackoverflow.com/questions/49271730/how-to-parse-verbs-using-spacy
     # dobj: A direct object is a noun phrase that is the accusative object of a (di)transitive verb
@@ -61,6 +66,17 @@ def is_transitive_sentence(sentence: Span) -> bool:
     return False
 
 
+def remove_punctuations(sentence: Span) -> List[Token]:
+    """
+    Remove punctuations (e.g. '.', '?') from the given sentence.
+    """
+    return [token for token in sentence if not token.is_punct]
+
+
+def remove_determiners(sentence: Span):
+    return [token for token in sentence if not token.is_punct]
+
+
 if __name__ == '__main__':
     """
     Please run the following command if it's the first time you run this module.
@@ -89,3 +105,6 @@ if __name__ == '__main__':
             # print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
         print('----------------------------')
         print()
+
+# a  DET    DT   det       determiner
+# token.tag_ can check plural
