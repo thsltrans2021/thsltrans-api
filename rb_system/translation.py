@@ -1,8 +1,7 @@
-from typing import List
 from rb_system.rules import br1_transitive_sentence, br2_intransitive_sentence
 from rb_system.nlp_tools import perform_nlp_process, is_transitive_sentence
-from api.models import TextData
-from rb_system.types import Sentence
+from api.models import TextData, TSentence
+from typing import List
 
 import logging
 
@@ -11,7 +10,7 @@ The translation functions that work on a sentence level only
 """
 
 
-def apply_rules(sentence: Sentence) -> List[str]:
+def apply_rules(sentence: TSentence) -> List[str]:
     """Return a list of rearranged english words"""
     words = ['Nope']
     if is_transitive_sentence(sentence):

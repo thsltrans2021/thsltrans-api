@@ -1,6 +1,6 @@
 from mongoengine import *
+from spacy.tokens import Token
 from typing import List
-from rb_system.types import Paragraph
 
 # TODO: define models for request, response, and db
 """
@@ -16,6 +16,8 @@ Request body of the endpoint `add_words()`
     ]
 }
 """
+TSentence = List[Token]
+TParagraph = List[TSentence]
 
 
 class SignGloss(DynamicEmbeddedDocument):
@@ -49,7 +51,7 @@ class TextData:
             original = []
         self.original: List[str] = original
         # [[[Hello], [This, is, your, friend, A.]], [[Minna, hit, Joe, when, the, teacher, turned]]]
-        self.processed_data: List[Paragraph] = []
+        self.processed_data: List[TParagraph] = []
         self.thsl_translation: List[List[List[str]]] = []
 
     def __str__(self):

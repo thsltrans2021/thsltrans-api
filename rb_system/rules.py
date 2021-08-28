@@ -1,5 +1,5 @@
 from typing import List
-from rb_system.types import Sentence
+from api.models import TSentence
 
 """
 Symbols from the ThSL research
@@ -8,7 +8,7 @@ Symbols from the ThSL research
 """
 
 
-def br1_transitive_sentence(sentence: Sentence) -> List[str]:
+def br1_transitive_sentence(sentence: TSentence) -> List[str]:
     """
     Rearrange the input text according to the grammar rule #1 (p.80)
     of a basic sentence.
@@ -26,7 +26,7 @@ def br1_transitive_sentence(sentence: Sentence) -> List[str]:
     return ['Rule 1', ' '.join([token.lemma_ for token in sentence])]
 
 
-def br2_intransitive_sentence(sentence: Sentence) -> List[str]:
+def br2_intransitive_sentence(sentence: TSentence) -> List[str]:
     """
     Rearrange the input text according to the grammar rule #2 (p.81)
     of a basic sentence.

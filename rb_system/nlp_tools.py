@@ -1,9 +1,9 @@
-import spacy
-from spacy.tokens import Doc, Token, Span
 from spacy import Language, displacy
-from api.models import TextData
+from spacy.tokens import Token, Doc, Span
+from api.models import TextData, TParagraph
 from typing import List
-from rb_system.types import Paragraph
+
+import spacy
 
 """
 python -m doctest -v rb_system/nlp_tools.py
@@ -23,7 +23,7 @@ def perform_nlp_process(text_data: TextData):
     for paragraph in text_data.original:
         p_doc: Doc = nlp(paragraph)
         sentences = list(p_doc.sents)
-        processed_paragraph: Paragraph = []
+        processed_paragraph: TParagraph = []
         for sentence in sentences:
             sentence = remove_punctuations(sentence)
             processed_paragraph.append(sentence)
