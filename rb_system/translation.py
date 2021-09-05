@@ -1,5 +1,5 @@
 from rb_system.rules import br1_transitive_sentence, br2_intransitive_sentence
-from rb_system.nlp_tools import perform_nlp_process, is_transitive_sentence
+from rb_system.nlp_tools import perform_nlp_process, is_transitive_sentence, is_intransitive_sentence
 from api.models import TextData, TSentence
 from typing import List
 
@@ -15,7 +15,8 @@ def apply_rules(sentence: TSentence) -> List[str]:
     words = ['Nope']
     if is_transitive_sentence(sentence):
         words = br1_transitive_sentence(sentence)
-    elif not is_transitive_sentence(sentence):
+    elif is_intransitive_sentence(sentence):
+        # 'Hello.' should not be intransitive sentence
         words = br2_intransitive_sentence(sentence)
 
     # can we apply a pattern of the rule to categorize a sentence

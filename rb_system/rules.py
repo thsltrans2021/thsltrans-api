@@ -1,11 +1,14 @@
-from typing import List
+from typing import List, Union
 from api.models import TSentence
+from spacy.tokens import Token
 
 """
 Symbols from the ThSL research
 (+|-)   optional
 (+)     required
 """
+
+TempToken = Union[Token, None]
 
 
 def br1_transitive_sentence(sentence: TSentence) -> List[str]:
@@ -32,8 +35,17 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[str]:
     of a basic sentence.
 
     SInT = (+)S (+)[S - V]
-
     """
-    return ['Rule 2', ' '.join([token.lemma_ for token in sentence])]
+    subject: TempToken = None
+    root: TempToken = None
+    for idx, token in enumerate(sentence):
+        try:
+            if idx > 0 and token.dep_ == 'ROOT':
+                subject = token.nbor(-1)
+                root = token
+        except IndexError:
+            continue
+    verb = f'{subject.lemma_}-{root.lemma_}'
+    return [subject.lemma_, verb]
 
 # TODO: define the rules for all types of sentence

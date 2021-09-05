@@ -66,6 +66,16 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
     return False
 
 
+def is_intransitive_sentence(sentence: List[Token]) -> bool:
+    """
+    >>> is_intransitive_sentence(nlp('Hello.')[:])
+    False
+    """
+    if len(sentence) <= 1:
+        return False
+    return not is_transitive_sentence(sentence)
+
+
 def remove_punctuations(sentence: Span) -> List[Token]:
     """
     Remove punctuations (e.g. '.', '?') from the given sentence.
@@ -100,8 +110,13 @@ if __name__ == '__main__':
                 if not token.is_punct:
                     print(f'{token.lemma_:<10}{token.pos_:<7}{token.tag_:<5}{token.dep_:<10}{spacy.explain(token.dep_)}')
                     # print(f'{token.text} is a child of {[a.text for a in token.ancestors]}')
+                    # try:
+                    #     print(f'{token.text} has neighbor: {token.nbor(-1)}')
+                    # except IndexError:
+                    #     print(f'{token.text} has neighbor: {token.nbor()}')
             print()
             print(f'Is transitive sentence? {is_transitive_sentence(s)}')
+            print(f'Is intransitive sentence? {is_intransitive_sentence(s)}')
             # print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
         print('----------------------------')
         print()
