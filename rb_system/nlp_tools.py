@@ -31,10 +31,9 @@ def perform_nlp_process(text_data: TextData):
 
 
 def is_transitive_sentence(sentence: List[Token]) -> bool:
-    # a children node of a verb contains dobj
-    # https://stackoverflow.com/questions/49271730/how-to-parse-verbs-using-spacy
-    # dobj: A direct object is a noun phrase that is the accusative object of a (di)transitive verb
     """
+    A sentence that has a direct object (dobj).
+
     >>> is_transitive_sentence(nlp('Mary is collecting stamps.')[:])
     True
     >>> is_transitive_sentence(nlp('I like drawing.')[:])
@@ -46,6 +45,9 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
     >>> is_transitive_sentence(nlp('He is sleeping.')[:])
     False
     """
+    if is_ditransitive_sentence(sentence):
+        return False
+
     has_direct_object = False
     gerund_ancestors: List[Token] = []
     token: Token
@@ -68,12 +70,52 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
 
 def is_intransitive_sentence(sentence: List[Token]) -> bool:
     """
-    >>> is_intransitive_sentence(nlp('Hello.')[:])
+    >>> is_intransitive_sentence(nlp('Hello')[:])
     False
+    >>> is_intransitive_sentence(nlp('She eats an apple.')[:])
+    False
+    >>> is_intransitive_sentence(nlp('The mouse asked.')[:])
+    True
+    >>> is_intransitive_sentence(nlp('The chickens walk.')[:])
+    True
     """
     if len(sentence) <= 1:
         return False
-    return not is_transitive_sentence(sentence)
+    return not is_transitive_sentence(sentence) and not is_ditransitive_sentence(sentence)
+
+
+def is_ditransitive_sentence(sentence: List[Token]) -> bool:
+    """
+    A sentence that has 2 objects (indirect obj followed by direct obj)
+
+    >>> is_ditransitive_sentence(nlp('She gave some chocolates to him.')[:])
+    True
+    >>> is_ditransitive_sentence(nlp('Please suggest me a good movie to watch.')[:])
+    True
+    >>> is_ditransitive_sentence(nlp('She eats an apple.')[:])
+    False
+    >>> is_ditransitive_sentence(nlp('Throw me the ball.')[:])
+    True
+    """
+    # My mother taught me how to cook. (still failed)
+    has_direct_object = False
+    has_dative = False
+    dobj_count = 0
+    if len(sentence) < 3:
+        return False
+    for token in sentence:
+        dep_relation = token.dep_
+        if dep_relation == 'ROOT':
+            # John bought me a phone.
+            next_token: Token = token.nbor()
+            if next_token.dep_ == 'dative':
+                return True
+        elif dep_relation == 'dative':
+            has_dative = True
+        elif dep_relation == 'dobj':
+            has_direct_object = True
+            dobj_count += 1
+    return has_direct_object and has_dative or dobj_count > 1
 
 
 def remove_punctuations(sentence: Span) -> List[Token]:
@@ -109,7 +151,9 @@ if __name__ == '__main__':
             for token in s:
                 if not token.is_punct:
                     print(f'{token.lemma_:<10}{token.pos_:<7}{token.tag_:<5}{token.dep_:<10}{spacy.explain(token.dep_)}')
-                    # print(f'{token.text} is a child of {[a.text for a in token.ancestors]}')
+                    # print(f'  - {token.text} is a child of {[a.text for a in token.ancestors]}')
+                    # if token.dep_ == 'ROOT':
+                    #     print('  ', token.is_ancestor(token.nbor()), token.nbor(), token.is_ancestor(token.nbor(-1)), token.nbor(-1))
                     # try:
                     #     print(f'{token.text} has neighbor: {token.nbor(-1)}')
                     # except IndexError:
@@ -117,7 +161,8 @@ if __name__ == '__main__':
             print()
             print(f'Is transitive sentence? {is_transitive_sentence(s)}')
             print(f'Is intransitive sentence? {is_intransitive_sentence(s)}')
-            # print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
+            print(f'Is ditransitive sentence? {is_ditransitive_sentence(s)}')
+            print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
         print('----------------------------')
         print()
 

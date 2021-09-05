@@ -1,5 +1,8 @@
-from rb_system.rules import br1_transitive_sentence, br2_intransitive_sentence
-from rb_system.nlp_tools import perform_nlp_process, is_transitive_sentence, is_intransitive_sentence
+from rb_system.rules import br1_transitive_sentence, br2_intransitive_sentence, br3_ditransitive_sentence
+from rb_system.nlp_tools import (
+    perform_nlp_process, is_transitive_sentence, is_intransitive_sentence,
+    is_ditransitive_sentence
+)
 from api.models import TextData, TSentence
 from typing import List
 
@@ -18,7 +21,8 @@ def apply_rules(sentence: TSentence) -> List[str]:
     elif is_intransitive_sentence(sentence):
         # 'Hello.' should not be intransitive sentence
         words = br2_intransitive_sentence(sentence)
-
+    elif is_ditransitive_sentence(sentence):
+        words = br3_ditransitive_sentence(sentence)
     # can we apply a pattern of the rule to categorize a sentence
     sign_glosses = map_english_to_sign_gloss(words)
     return sign_glosses

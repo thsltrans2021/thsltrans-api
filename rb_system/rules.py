@@ -48,4 +48,19 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[str]:
     verb = f'{subject.lemma_}-{root.lemma_}'
     return [subject.lemma_, verb]
 
+
+def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
+    """
+    Rearrange the input text according to the grammar rule #3 (p.81)
+    of a basic sentence.
+
+    (1) SDiT = (+|-)S (+|-)DO (+|-)S (+)V
+    (1) SDiT = (+|-)S (+|-)DO (+)[S1-V-doCL-IndirectObject] -> Mother gives me THB40 ('me' is indirect object)
+    (2) SDiT = (+|-)S (+)V (+|-)DO
+
+    Note: doCL = the classifier of the direct object
+    """
+    # if the subject is a name of sth. -> should state subject twice
+    return ['Rule 3', ' '.join([token.lemma_ for token in sentence])]
+
 # TODO: define the rules for all types of sentence
