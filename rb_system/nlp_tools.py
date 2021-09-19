@@ -25,8 +25,8 @@ def perform_nlp_process(text_data: TextData):
         sentences = list(p_doc.sents)
         processed_paragraph: TParagraph = []
         for sentence in sentences:
-            sentence = remove_punctuations(sentence)
-            processed_paragraph.append(sentence)
+            sentence_token = remove_punctuations(sentence)
+            processed_paragraph.append(sentence_token)
         text_data.processed_data.append(processed_paragraph)
 
 
@@ -118,15 +118,30 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
     return has_direct_object and has_dative or dobj_count > 1
 
 
-def remove_punctuations(sentence: Span) -> List[Token]:
+def remove_punctuations(sentence: List[Token]) -> List[Token]:
     """
     Remove punctuations (e.g. '.', '?') from the given sentence.
     """
     return [token for token in sentence if not token.is_punct]
 
 
-def remove_determiners(sentence: Span):
-    return [token for token in sentence if not token.is_punct]
+def remove_determiners(sentence: List[Token]) -> List[Token]:
+    return [token for token in sentence if not token.dep_ == 'det']
+
+
+def remove_unnecessary_tokens(sentence: List[Token]) -> List[Token]:
+    """
+    Remove unnecessary tokens which are punctuations and determiners
+    from the given sentence.
+    """
+    result: List[Token] = []
+    for token in sentence:
+        if token.is_punct:
+            continue
+        elif token.dep_ == 'det':
+            continue
+        result.append(token)
+    return result
 
 
 if __name__ == '__main__':
