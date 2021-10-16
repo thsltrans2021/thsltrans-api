@@ -33,6 +33,7 @@ def generate_translation():
 
 @translator.route('/create', methods=['GET'])
 def test_db():
+    # TODO: redesign response body as the database schema changes
     gloss = SignGloss(gloss_en='TEST')
     eng2sign = Eng2Sign(
         english='test2',
