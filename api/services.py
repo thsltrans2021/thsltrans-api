@@ -26,14 +26,15 @@ def validate_dict_request_body(req: Request) -> bool:
 
 
 def validate_trans_request_body(req: Request) -> bool:
+    """Validate the request body from `generate_translation()` controller"""
     try:
         req_body = dict(req.json)
-        paragraphs = req_body['data']
+        data = req_body['data']
+        if not data:
+            return False
+        paragraphs = data['paragraphs']
         if not paragraphs:
             return False
-        for k in paragraphs.keys():
-            if k[0] != 'p':
-                return False
     except TypeError:
         return False
     except KeyError:
@@ -42,6 +43,29 @@ def validate_trans_request_body(req: Request) -> bool:
 
 
 def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
+    """
+    Parse the request body from `add_words()` controller
+
+    Example request:
+    {
+        "data": [
+            {
+                "word": "I",
+                "glosses": [
+                    {
+                        "gloss": "Pron1",
+                        "lang": "US"
+                    },
+                    {
+                        "gloss": "ฉัน",
+                        "lang": "TH"
+                    }
+                ],
+                "en_pos": "1st personal pronoun"
+            }
+        ]
+    }
+    """
     eng2signs = []
     req_body = dict(req.json)
     for wp in req_body['data']:
@@ -66,11 +90,25 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
 
 
 def request_body_to_text_data(req: Request) -> TextData:
+    """
+    Parse the request body from `generate_translation()` controller
+
+    Example request:
+    {
+        "data": {
+            "paragraphs": [
+                "Hello. This is your friend, John.",
+                "The chickens walk.",
+                "My mother gives him 4 apples."
+            ],
+            "lang": "US"
+        }
+    }
+    """
     req_body = dict(req.json)
     data = req_body['data']
     trans = TextData()
-    for key in data.keys():
-        trans.original.append(data[key])
+    trans.original = data['paragraphs']
     return trans
 
 
