@@ -31,7 +31,7 @@ TParagraph = List[TSentence]
 class SignGloss(DynamicEmbeddedDocument):
     meta = {'allow_inheritance': True}
     gloss = StringField()
-    # country code alpha-2
+    # ISO 639-1 codes
     lang = StringField()
 
 
