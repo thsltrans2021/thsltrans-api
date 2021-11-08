@@ -8,7 +8,7 @@ import json
 
 def validate_dict_request_body(req: Request) -> bool:
     """Validate request from `add_words()` controller"""
-    required_keys = ['word', 'gloss_en']
+    required_keys = ['word', 'glosses']
     try:
         req_body = dict(req.json)
         word_pairs = req_body['data']
@@ -46,17 +46,14 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
     req_body = dict(req.json)
     for wp in req_body['data']:
         eng2sign = Eng2Sign(english=wp['word'])
-        gloss = SignGloss()
 
+        # update the existing document if any
         result: QuerySet = Eng2Sign.objects(english=wp['word'])[:1]
         if result:
             eng2sign = result[0]
-            gloss = eng2sign.sign_glosses
 
-        for key in wp.keys():
-            if 'gloss' in key:
-                setattr(gloss, key, wp[key])
-        eng2sign.sign_glosses = gloss
+        for gloss in wp['glosses']:
+            eng2sign.sign_glosses = SignGloss(gloss=gloss['gloss'], lang=gloss['lang'])
 
         try:
             eng2sign.en_pos = wp['en_pos']

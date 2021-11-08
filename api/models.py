@@ -8,10 +8,18 @@ Request body of the endpoint `add_words()`
 {
     "data": [
         {
-            "word": "ant",
-            "gloss_en": "ANT",
-            "gloss_th": "มด",
-            "contexts": [""]
+            "word": "I",
+            "glosses": [
+                {
+                    "gloss": "Pron1",
+                    "lang": "US"
+                },
+                {
+                    "gloss": "ฉัน",
+                    "lang": "TH"
+                }
+            ],
+            "en_pos": "1st personal pronoun"
         }
     ]
 }
@@ -22,7 +30,9 @@ TParagraph = List[TSentence]
 
 class SignGloss(DynamicEmbeddedDocument):
     meta = {'allow_inheritance': True}
-    gloss_en = StringField()
+    gloss = StringField()
+    # country code alpha-2
+    lang = StringField()
 
 
 class Eng2Sign(Document):

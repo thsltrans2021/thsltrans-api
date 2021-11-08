@@ -31,14 +31,13 @@ def generate_translation():
     }), 200
 
 
-@translator.route('/create', methods=['GET'])
+@translator.route('/create', methods=['POST'])
 def test_db():
-    # TODO: redesign response body as the database schema changes
-    gloss = SignGloss(gloss_en='TEST')
+    gloss = SignGloss(gloss='TEST', lang='TH')
     eng2sign = Eng2Sign(
         english='test2',
-        context='',
-        sign_glosses=gloss
+        sign_glosses=gloss,
+        contexts=['test1', 'test2']
     ).save()
     return jsonify({
         'id': str(eng2sign.id)
