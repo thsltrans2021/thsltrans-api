@@ -162,10 +162,12 @@ if __name__ == '__main__':
         for s in sentences:
             # displacy.serve(s, style='dep')
             print(s)
+            print(f'| {"token.lemma_":^10} | {"token.pos_":^7} | {"token.tag_":^5} | {"token.dep_":^10} |')
+            print('-------------------------------------------------------')
             token: Token
             for token in s:
                 if not token.is_punct:
-                    print(f'{token.lemma_:<10}{token.pos_:<7}{token.tag_:<5}{token.dep_:<10}{spacy.explain(token.dep_)}')
+                    print(f'| {token.lemma_:<12} | {token.pos_:<10} | {token.tag_:<10} | {token.dep_:<10} | {spacy.explain(token.dep_)}')
                     # print(f'  - {token.text} is a child of {[a.text for a in token.ancestors]}')
                     # if token.dep_ == 'ROOT':
                     #     print('  ', token.is_ancestor(token.nbor()), token.nbor(), token.is_ancestor(token.nbor(-1)), token.nbor(-1))
@@ -178,7 +180,7 @@ if __name__ == '__main__':
             print(f'Is intransitive sentence? {is_intransitive_sentence(s)}')
             print(f'Is ditransitive sentence? {is_ditransitive_sentence(s)}')
             print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
-        print('----------------------------')
+        print('=============================')
         print()
 
 # a  DET    DT   det       determiner
