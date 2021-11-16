@@ -44,3 +44,19 @@ def get_word():
         'message': 'Success',
         'data': [eng2sign_to_json(r) for r in results]
     }), 200
+
+
+@dictionary.route('/words/word', methods=['PUT'])
+def update_word():
+    """Update the existing sign glosses of the specified word"""
+    doc_id = request.args.get('id')
+    if doc_id is None:
+        return jsonify({
+            'message': 'Missing some parameter(s)'
+        }), 400
+    result = request_to_existing_eng2sign(doc_id, request)
+    result.save()
+    return jsonify({
+        'message': 'Success',
+        'data': eng2sign_to_json(result)
+    }), 200
