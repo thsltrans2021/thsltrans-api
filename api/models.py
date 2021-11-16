@@ -3,27 +3,6 @@ from spacy.tokens import Token
 from typing import List
 
 # TODO: define models for request, response, and db
-"""
-Request body of the endpoint `add_words()`
-{
-    "data": [
-        {
-            "word": "I",
-            "glosses": [
-                {
-                    "gloss": "Pron1",
-                    "lang": "US"
-                },
-                {
-                    "gloss": "ฉัน",
-                    "lang": "TH"
-                }
-            ],
-            "en_pos": "1st personal pronoun"
-        }
-    ]
-}
-"""
 TSentence = List[Token]
 TParagraph = List[TSentence]
 
@@ -39,7 +18,7 @@ class Eng2Sign(Document):
     english = StringField(required=True)
     en_pos = StringField()
     contexts = ListField()
-    sign_glosses = EmbeddedDocumentField(SignGloss)
+    sign_glosses = ListField(EmbeddedDocumentField(SignGloss))
 
     meta = {
         'collection': 'eng2signs'

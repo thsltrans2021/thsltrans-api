@@ -76,11 +76,17 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
         if result:
             eng2sign = result[0]
 
+        glosses = []
         for gloss in wp['glosses']:
-            eng2sign.sign_glosses = SignGloss(gloss=gloss['gloss'], lang=gloss['lang'])
+            glosses.append(SignGloss(gloss=gloss['gloss'], lang=gloss['lang']))
+        eng2sign.sign_glosses = glosses
 
         try:
             eng2sign.en_pos = wp['en_pos']
+        except KeyError:
+            pass
+
+        try:
             eng2sign.contexts = wp['contexts']
         except KeyError:
             pass
@@ -115,5 +121,8 @@ def request_body_to_text_data(req: Request) -> TextData:
 def eng2sign_to_json(eng2sign: Eng2Sign) -> Dict:
     eng2sign_dict = json.loads(eng2sign.to_json())
     del eng2sign_dict['_id']
-    del eng2sign_dict['sign_glosses']['_cls']
+    sign_glosses: List[SignGloss] = eng2sign_dict['sign_glosses']
+    for i in range(len(sign_glosses)):
+        del eng2sign_dict['sign_glosses'][i]['_cls']
+
     return eng2sign_dict
