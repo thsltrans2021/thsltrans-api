@@ -1,5 +1,5 @@
 from typing import List, Union
-from api.models import TSentence
+from models.models import TSentence
 from spacy.tokens import Token, Span
 
 """

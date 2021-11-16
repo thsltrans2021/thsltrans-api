@@ -1,6 +1,6 @@
-from spacy import Language, displacy
-from spacy.tokens import Token, Doc, Span
-from api.models import TextData, TParagraph
+from spacy import Language
+from spacy.tokens import Token, Doc
+from models.models import TextData, TParagraph
 from typing import List
 
 import spacy

@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from flask import jsonify
-from api.models import SignGloss, Eng2Sign
+from models.models import SignGloss, Eng2Sign
 from api.services import validate_trans_request_body, request_body_to_text_data
 from rb_system.translation import translate_english_to_sign_gloss
 

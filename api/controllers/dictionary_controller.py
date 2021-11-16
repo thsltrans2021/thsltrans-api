@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask import jsonify
 from api.services import *
-from api.models import Eng2Sign
+from models.models import Eng2Sign
 from mongoengine import QuerySet
 
 dictionary = Blueprint('dictionary', __name__)
