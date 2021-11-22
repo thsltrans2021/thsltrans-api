@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask import jsonify
 from api.services import *
-from api.models import Eng2Sign
+from models.models import Eng2Sign
 from mongoengine import QuerySet
 
 dictionary = Blueprint('dictionary', __name__)
@@ -43,4 +43,20 @@ def get_word():
     return jsonify({
         'message': 'Success',
         'data': [eng2sign_to_json(r) for r in results]
+    }), 200
+
+
+@dictionary.route('/words/word', methods=['PUT'])
+def update_word():
+    """Update the existing sign glosses of the specified word"""
+    doc_id = request.args.get('id')
+    if doc_id is None:
+        return jsonify({
+            'message': 'Missing some parameter(s)'
+        }), 400
+    result = request_to_existing_eng2sign(doc_id, request)
+    result.save()
+    return jsonify({
+        'message': 'Success',
+        'data': eng2sign_to_json(result)
     }), 200

@@ -1,14 +1,13 @@
 from flask import Request
 from typing import List, Dict
-from api.models import Eng2Sign, SignGloss, TextData
-from mongoengine import QuerySet
+from models.models import Eng2Sign, SignGloss, TextData
 
 import json
 
 
 def validate_dict_request_body(req: Request) -> bool:
     """Validate request from `add_words()` controller"""
-    required_keys = ['word', 'gloss_en']
+    required_keys = ['word', 'glosses']
     try:
         req_body = dict(req.json)
         word_pairs = req_body['data']
@@ -26,14 +25,15 @@ def validate_dict_request_body(req: Request) -> bool:
 
 
 def validate_trans_request_body(req: Request) -> bool:
+    """Validate the request body from `generate_translation()` controller"""
     try:
         req_body = dict(req.json)
-        paragraphs = req_body['data']
+        data = req_body['data']
+        if not data:
+            return False
+        paragraphs = data['paragraphs']
         if not paragraphs:
             return False
-        for k in paragraphs.keys():
-            if k[0] != 'p':
-                return False
     except TypeError:
         return False
     except KeyError:
@@ -42,24 +42,45 @@ def validate_trans_request_body(req: Request) -> bool:
 
 
 def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
+    """
+    Parse the request body from `add_words()` controller
+
+    Example request body:
+    {
+        "data": [
+            {
+                "word": "I",
+                "glosses": [
+                    {
+                        "gloss": "Pron1",
+                        "lang": "US"
+                    },
+                    {
+                        "gloss": "ฉัน",
+                        "lang": "TH"
+                    }
+                ],
+                "en_pos": "1st personal pronoun"
+            }
+        ]
+    }
+    """
     eng2signs = []
     req_body = dict(req.json)
     for wp in req_body['data']:
         eng2sign = Eng2Sign(english=wp['word'])
-        gloss = SignGloss()
-
-        result: QuerySet = Eng2Sign.objects(english=wp['word'])[:1]
-        if result:
-            eng2sign = result[0]
-            gloss = eng2sign.sign_glosses
-
-        for key in wp.keys():
-            if 'gloss' in key:
-                setattr(gloss, key, wp[key])
-        eng2sign.sign_glosses = gloss
+        glosses = []
+        for gloss in wp['glosses']:
+            glosses.append(SignGloss(gloss=gloss['gloss'], lang=gloss['lang']))
+        eng2sign.sign_glosses = glosses
 
         try:
-            eng2sign.context = wp['context']
+            eng2sign.en_pos = wp['en_pos']
+        except KeyError:
+            pass
+
+        try:
+            eng2sign.contexts = wp['contexts']
         except KeyError:
             pass
 
@@ -67,17 +88,76 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
     return eng2signs
 
 
+def request_to_existing_eng2sign(doc_id: str, req: Request) -> Eng2Sign:
+    """
+    Parse the request body from `update_words()` controller
+
+    Example request body:
+    {
+        "word": "walk",
+        "glosses": [
+            {
+                "gloss": "person-WALK",
+                "lang": "en"
+            },
+            {
+                "gloss": "เดิน",
+                "lang": "th"
+            }
+        ],
+        "contexts": ["human", "1 human", "ใช้กับคนหนึ่งคน", "หนึ่งคน", "1 คน"]
+    }
+    """
+    req_body = dict(req.json)
+    eng2sign: Eng2Sign = Eng2Sign.objects.with_id(doc_id)
+
+    glosses = []
+    for gloss in req_body['glosses']:
+        glosses.append(SignGloss(gloss=gloss['gloss'], lang=gloss['lang']))
+    eng2sign.sign_glosses = glosses
+
+    try:
+        eng2sign.en_pos = req_body['en_pos']
+    except KeyError:
+        pass
+
+    try:
+        eng2sign.contexts = req_body['contexts']
+    except KeyError:
+        pass
+
+    return eng2sign
+
+
 def request_body_to_text_data(req: Request) -> TextData:
+    """
+    Parse the request body from `generate_translation()` controller
+
+    Example request body:
+    {
+        "data": {
+            "paragraphs": [
+                "Hello. This is your friend, John.",
+                "The chickens walk.",
+                "My mother gives him 4 apples."
+            ],
+            "lang": "US"
+        }
+    }
+    """
     req_body = dict(req.json)
     data = req_body['data']
     trans = TextData()
-    for key in data.keys():
-        trans.original.append(data[key])
+    trans.original = data['paragraphs']
     return trans
 
 
 def eng2sign_to_json(eng2sign: Eng2Sign) -> Dict:
     eng2sign_dict = json.loads(eng2sign.to_json())
+    eng2sign_dict['id'] = eng2sign_dict['_id']['$oid']
     del eng2sign_dict['_id']
-    del eng2sign_dict['sign_glosses']['_cls']
+    sign_glosses: List[SignGloss] = eng2sign_dict['sign_glosses']
+    for i in range(len(sign_glosses)):
+        del eng2sign_dict['sign_glosses'][i]['_cls']
+
     return eng2sign_dict
