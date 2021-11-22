@@ -1,7 +1,6 @@
 from flask import Request
 from typing import List, Dict
 from models.models import Eng2Sign, SignGloss, TextData
-from mongoengine import QuerySet
 
 import json
 

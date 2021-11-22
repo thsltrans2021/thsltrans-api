@@ -4,7 +4,7 @@ from rb_system.nlp_tools import (
     is_ditransitive_sentence
 )
 from models.models import TextData, TSentence, Eng2Sign, SignGloss
-from typing import List
+from typing import List, Optional
 
 import logging
 
@@ -28,29 +28,32 @@ def apply_rules(sentence: TSentence) -> List[str]:
     return sign_glosses
 
 
-# TODO: how to directly map chicken-walk to the dictionary
 def map_english_to_sign_gloss(words: List[str]) -> List[str]:
     """
     Convert a list of english words to a list of sign glosses.
     Map english words to the ThSL database.
     """
     glosses: List[str] = []
-    for word in words:
-        results = Eng2Sign.objects(english=word)
-        if len(results) == 0:
-            logging.info(f'word {word} is not found in the dictionary')
-            glosses.append(f'word {word} is not found in the dictionary')
-            continue
+    index = 0
+    for idx, word in enumerate(words):
+        split_word = word.split('-')
 
-        result_word: Eng2Sign = results[0]
-        gloss: SignGloss
-        for gloss in result_word.sign_glosses:
-            if gloss.lang == 'en':
-                logging.info(f'Found word {word} in the dictionary')
-                glosses.append(gloss.gloss)
+        if len(split_word) > 1:
+            related_word = split_word[0]
+            search_word = split_word[1]
+            # TODO: mark sth and choose word outside this loop? remember index to insert later?
+            index = idx
+            # print('(1) ---> ', word, split_word, search_word, related_word, index)
+            gloss = retrieve_sign_gloss_from_context(search_word, related_word)
+            glosses.append(gloss)
+        else:
+            # print('(2) ---> ', word, split_word, search_word, related_word, index)
+            search_word = split_word[0]
+            gloss = retrieve_sign_gloss(search_word)
+            glosses.append(gloss)
 
-    # return glosses
-    return words
+    return glosses
+    # return words
 
 
 def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]]:
@@ -69,7 +72,78 @@ def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]
     return results
 
 
+def get_glosses_from_words(words: List[Eng2Sign]) -> List[str]:
+    glosses = []
+    for word in words:
+        gloss: SignGloss
+        for gloss in word.sign_glosses:
+            if gloss.lang == 'en':
+                logging.info(f'Found word {word.english} in the dictionary')
+                glosses.append(gloss.gloss)
+    return glosses
+
+
+def retrieve_word(word: str) -> Optional[Eng2Sign]:
+    results = Eng2Sign.objects(english=word)
+    if len(results) == 0:
+        logging.info(f"Word '{word}' is not found in the dictionary")
+        return None
+
+    logging.info(f"Found {len(results)} results that matches '{word}'")
+    return results[0]
+
+
+def retrieve_word_from_context(word: str, related_word: str) -> Optional[Eng2Sign]:
+    candidate_words = Eng2Sign.objects(english=word)
+    related_words = Eng2Sign.objects(english=related_word)
+
+    if len(candidate_words) == 0:
+        logging.info(f"Word '{word}' is not found in the dictionary")
+        return
+
+    for rw in related_words:
+        rw: Eng2Sign
+        for candidate in candidate_words:
+            candidate: Eng2Sign
+            print("candidate context: ", candidate.contexts)
+            for context in rw.contexts:
+                if context in candidate.contexts:
+                    return candidate
+    return
+
+
+def retrieve_sign_gloss(word: str) -> str:
+    result_word = retrieve_word(word)
+    if not result_word:
+        logging.info(f"Word '{word}' is not found in the dictionary")
+        return f"word '{word}' is not found in the dictionary"
+
+    gloss: SignGloss
+    for gloss in result_word.sign_glosses:
+        if gloss.lang == 'en':
+            logging.info(f"Found word '{result_word.english}' in the dictionary")
+            return gloss.gloss
+    logging.info(f"No gloss of '{word}' is found in the dictionary")
+    return f"no gloss of '{word}' is found in the dictionary"
+
+
+def retrieve_sign_gloss_from_context(word: str, related_word: str) -> str:
+    result_word = retrieve_word_from_context(word, related_word)
+    if not result_word:
+        logging.info(f"Cannot find a context of '{word}' that matches '{related_word}'")
+        return f"word '{word}' is not found in the dictionary"
+
+    gloss: SignGloss
+    for gloss in result_word.sign_glosses:
+        if gloss.lang == 'en':
+            logging.info(f"Found word '{result_word.english}' in the dictionary")
+            return gloss.gloss
+    logging.info(f"No gloss of '{word}' is found in the dictionary")
+    return f"no gloss of '{word}' is found in the dictionary"
+
+
 """
+idea?
 walk: [
   {
     context: chicken, bird
@@ -81,6 +155,10 @@ walk: [
   }
 ]
 
-classify animal to ... number
 how many ThSL signs for walking?
+
+he-walk
+# search each context
+he -> context = [person, singular]
+walk -> context = ['use with 1 person', '1 person', 'ใช้กับคนหนึ่งคน', 'หนึ่งคน', '1 คน', 'person', 'คน']
 """
