@@ -1,0 +1,108 @@
+openapi: '3.0.2'
+info:
+  title: ThSL translator web application
+  version: '1.0'
+servers:
+  - url: https://thsltrans-api.herokuapp.com/
+paths:
+  /api/trans:
+    get:
+      responses:
+        '200':
+          description: OK
+  /api/trans/translate:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  $ref: '#components/schemas/TextData'
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Translate the given English text
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#components/schemas/TranslatedData'
+                  message:
+                    type: string
+  /api/dict/words:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Word'
+      responses:
+        '201':
+          description: Add word(s) to a dictionary
+components:
+  schemas:
+    TextData:
+      type: object
+      properties:
+        paragraphs:
+          description: A paragraph of English sentences
+          type: array
+          items:
+            type: string
+        lang:
+          type: string
+          description: ISO 639-1 language codes
+    TranslatedData:
+      type: object
+      properties:
+        original:
+          type: string
+          description: The original word or sentence
+        p_number:
+          type: number
+          description: The paragraph number
+        thsl_translation:
+          type: array
+          items:
+            type: array
+            description: ThSL translation of the original word or sentence
+            items:
+              type: string
+    Word:
+      type: object
+      properties:
+        word:
+          type: string
+          example: He
+        glosses:
+          type: array
+          items:
+            $ref: '#components/schemas/SignGloss'
+        en_pos:
+          type: string
+          description: Part-of-speech of the word
+          example: 2nd personal pronoun
+        contexts:
+          type: array
+          description: Context of the word
+          items:
+            type: string
+            example: person
+    SignGloss:
+      type: object
+      properties:
+        gloss:
+          type: string
+        lang:
+          type: string
+          description: ISO 639-1 language codes
