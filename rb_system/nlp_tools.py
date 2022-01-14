@@ -118,6 +118,13 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
     return has_direct_object and has_dative or dobj_count > 1
 
 
+def is_single_word(sentence: List[Token]) -> bool:
+    """
+    True if the given sentence contains one word.
+    """
+    return len(sentence) == 1
+
+
 def remove_punctuations(sentence: List[Token]) -> List[Token]:
     """
     Remove punctuations (e.g. '.', '?') from the given sentence.

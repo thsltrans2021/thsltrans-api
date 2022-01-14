@@ -1,7 +1,10 @@
-from rb_system.rules import br1_transitive_sentence, br2_intransitive_sentence, br3_ditransitive_sentence
+from rb_system.rules import (
+    br1_transitive_sentence, br2_intransitive_sentence, br3_ditransitive_sentence,
+    br0_single_word
+)
 from rb_system.nlp_tools import (
     perform_nlp_process, is_transitive_sentence, is_intransitive_sentence,
-    is_ditransitive_sentence
+    is_ditransitive_sentence, is_single_word
 )
 from models.models import TextData, TSentence, Eng2Sign, SignGloss
 from typing import List, Optional
@@ -15,8 +18,10 @@ The translation functions that work on a sentence level only
 
 def apply_rules(sentence: TSentence) -> List[str]:
     """Return a list of rearranged english words"""
-    words = ['Nope']
-    if is_transitive_sentence(sentence):
+    words = ['not supported']
+    if is_single_word(sentence):
+        words = br0_single_word(sentence)
+    elif is_transitive_sentence(sentence):
         words = br1_transitive_sentence(sentence)
     elif is_intransitive_sentence(sentence):
         # 'Hello.' should not be intransitive sentence

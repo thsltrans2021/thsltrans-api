@@ -12,6 +12,10 @@ TempToken = Union[Token, None]
 TempSpan = Union[Span, None]
 
 
+def br0_single_word(sentence: TSentence) -> List[str]:
+    return [token.lemma_ for token in sentence]
+
+
 def br1_transitive_sentence(sentence: TSentence) -> List[str]:
     """
     Rearrange the input text according to the grammar rule #1 (p.80)
