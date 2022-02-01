@@ -52,9 +52,12 @@ class TextData:
     def prepare_response_data(self) -> List[dict]:
         data = []
         for i in range(len(self.thsl_translation)):
+            paragraph = []
+            for sentence in self.thsl_translation[i]:
+                paragraph.append(",".join(sentence))
             data.append({
                 'p_number': i + 1,
                 'original': self.original[i],
-                'thsl_translation': self.thsl_translation[i]
+                'thsl_translation': paragraph
             })
         return data
