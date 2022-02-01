@@ -49,18 +49,18 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
     {
         "data": [
             {
-                "word": "I",
+                "word": "money",
                 "glosses": [
                     {
-                        "gloss": "Pron1",
-                        "lang": "US"
+                        "gloss": "MONEY",
+                        "lang": "en"
                     },
                     {
-                        "gloss": "ฉัน",
-                        "lang": "TH"
+                        "gloss": "เงิน",
+                        "lang": "th"
                     }
                 ],
-                "en_pos": "1st personal pronoun"
+                "context": "object"
             }
         ]
     }

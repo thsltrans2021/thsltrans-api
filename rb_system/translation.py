@@ -126,7 +126,7 @@ def retrieve_sign_gloss(word: str) -> str:
     gloss: SignGloss
     for gloss in result_word.sign_glosses:
         if gloss.lang == 'en':
-            logging.info(f"Found word '{result_word.english}' in the dictionary")
+            logging.info(f"Found gloss for a word '{result_word.english}' in the dictionary")
             return gloss.gloss
     logging.info(f"No gloss of '{word}' is found in the dictionary")
     return f"no gloss of '{word}' is found in the dictionary"
