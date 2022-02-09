@@ -7,6 +7,7 @@ import os
 from flask import Flask
 from dotenv import dotenv_values
 from dirs import ROOT_DIR
+from flask_cors import CORS
 
 
 def create_app(test_config=None) -> Flask:
@@ -43,4 +44,5 @@ def create_app(test_config=None) -> Flask:
         register_routes(app)
         register_commands(app)
 
+    CORS(app, origins=["*"])
     return app
