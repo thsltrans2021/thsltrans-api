@@ -101,6 +101,12 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
 
 
 def br4_locative_sentence(sentence: TSentence) -> List[str]:
+    """
+    Rearrange the input text according to the grammar rule #4 (p.83)
+    of a basic sentence.
+
+    Slocative = (+)Location (+)S (+)Vlocative
+    """
     return ['Rule 4', ' '.join([token.lemma_ for token in sentence])]
 
 # TODO: define the rules for all types of sentence
