@@ -162,8 +162,8 @@ def is_locative_sentence(sentence: List[Token]):
             prep_phrases.append((current_prep, token))
 
     prep_phrases_of_place = _filter_preposition_of_place(prep_phrases)
-    # print(prep_phrases)
-    # print(prep_phrases_of_place)
+    print(prep_phrases)
+    print(prep_phrases_of_place)
     return len(prep_phrases_of_place) > 0
 
 
@@ -193,7 +193,8 @@ def has_org_entity(sentence: List[Token]) -> bool:
     return len(org_entities) > 0
 
 
-def retrieve_entities(sentence: List[Token], entity_types: List[EntityLabel]) -> List[Tuple[str, str]]:
+# TODO: merge token here? e.g. merge 'Kasetsart' and 'University' as 'Kasetsart University' (ORG)
+def retrieve_entities(sentence: List[Token], entity_types: List[EntityLabel]) -> List[Tuple[Token, str]]:
     """
     Returns a list of the detected entities with their labels
 
@@ -210,18 +211,70 @@ def retrieve_entities(sentence: List[Token], entity_types: List[EntityLabel]) ->
     [('Kasetsart', 'ORG'), ('University', 'ORG'), ('Apple', 'ORG'), ('Monday', 'DATE')]
     """
     if len(entity_types) == 0:
-        return [(token.text, token.ent_type_) for token in sentence]
+        return [(token, token.ent_type_) for token in sentence if token.ent_type_ != '']
 
-    entities: List[Tuple[str, str]] = []
+    entities: List[Tuple[Token, str]] = []
     for token in sentence:
         try:
             entity_label = EntityLabel(token.ent_type_)
             if entity_label in entity_types:
-                entities.append((token.text, token.ent_type_))
+                entities.append((token, token.ent_type_))
         except ValueError:
             continue
 
     return entities
+
+
+def _merge_token_by_entity(sentence: List[Token]) -> List[Token]:
+    """
+    - I work at Kasetsart University and Apple Inc.
+
+    I work at Kasetsart and Apple Inc.
+    [(Kasetsart, 'ORG'), (and, 'ORG'), (Apple, 'ORG'), (Inc., 'ORG')]
+    [(3, 4, 4, 5, 5, 6)]
+
+    Entities
+    Kasetsart and Apple Inc. | ORG | 10 | 34
+    """
+    entity_indexes = []
+    entity_indexes_groups = []
+    for i in range(len(sentence)):
+        if i + 1 == len(sentence):
+            if len(entity_indexes) > 1:
+                entity_indexes_groups.append(set(entity_indexes))
+            break
+
+        token: Token = sentence[i]
+        next_token: Token = sentence[i].nbor()
+
+        if token.ent_type_ == next_token.ent_type_:
+            if token.ent_type_ != '':
+                entity_indexes.append(i)
+                entity_indexes.append(i + 1)
+        else:
+            if len(entity_indexes) > 1:
+                entity_indexes_groups.append(set(entity_indexes))
+                entity_indexes = []
+
+    # print(entities)
+    # print(entity_indexes_groups)
+
+    sentence_doc = nlp(' '.join([token.text for token in sentence]))
+
+    print("Before: ", [t.text for t in sentence_doc])
+    with sentence_doc.retokenize() as retokenizer:
+        for indexes in entity_indexes_groups:
+            start = min(indexes)
+            end = max(indexes) + 1
+            retokenizer.merge(
+                sentence_doc[start:end],
+                attrs={
+                    "LEMMA": " ".join([sentence[i].lemma_ for i in indexes]),
+                }
+            )
+
+    new_sentence = [token for token in sentence_doc]
+    return new_sentence
 
 
 def remove_punctuations(sentence: List[Token]) -> List[Token]:
@@ -290,6 +343,7 @@ if __name__ == '__main__':
             print(f'Is ditransitive sentence? {is_ditransitive_sentence(s)}')
             print(f'Is locative sentence? {is_locative_sentence(s)}')
             print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
+            print('merge:', _merge_token_by_entity(s))
 
         print('\nEntities')
         for ent in doc.ents:
