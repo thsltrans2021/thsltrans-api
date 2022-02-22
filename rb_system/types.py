@@ -75,7 +75,7 @@ class DependencyLabel(Enum):
     MODIFIER_OF_QUANTIFIER = "quantmod"
     RELATIVE_CLAUSE_MODIFIER = "relcl"
     OVERRIDDEN_DISFLUENCY = "reparandum"
-    ROOT = "root"
+    ROOT = "ROOT"
     VOCATIVE = "vocative"
     OPEN_CLAUSAL_COMPLEMENT = "xcomp"
 
