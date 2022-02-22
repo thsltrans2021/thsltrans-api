@@ -1,8 +1,13 @@
 from typing import List, Union
 from models.models import TSentence
 from spacy.tokens import Token, Span
+from rb_system.nlp_tools import retrieve_preposition_phrases, filter_preposition_of_place
+from rb_system.types import DependencyLabel, POSLabel, ThSLClassifier
 
 """
+This code contains rules of basic simple sentence structure (the obligatory part of ThSL sentence).
+Simple sentence is a sentence that doesn't have conjunction.
+
 Symbols from the ThSL research
 (+|-)   optional
 (+)     required
@@ -100,26 +105,51 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
     return [subject.lemma_, direct_object_str, verb]
 
 
-def br4_locative_sentence(sentence: TSentence) -> List[str]:
+def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLClassifier]]:
     """
     Rearrange the input text according to the grammar rule #4 (p.83)
     of a basic sentence.
 
     Slocative = (+)Location (+)S (+)Vlocative
+
+    "I work at Kasesart University.",
+            "Mother is at home.",
     """
-    # assume that 'location' entity label is already assigned before this function
-    location: TempToken = None
+    # TODO: setting scene for 'in', 'on', 'under', etc. perp
+    set_scene = False
+    special_prep = ['in', 'on', 'under']
     subject: TempToken = None
-    verb: TempToken = None
+    root: TempToken = None
+    prep: TempToken = None
+
+    prep_phrases = retrieve_preposition_phrases(sentence)
+    prep_phrases_of_place = filter_preposition_of_place(prep_phrases)
+    assert len(prep_phrases_of_place) < 2, f'[b4] Expected to find 1 perp phrase but found {len(prep_phrases_of_place)}'
+    location = prep_phrases_of_place[0][1]
 
     for token in sentence:
-        if token.dep_ == 'ROOT':
-            verb = token
-        elif token.dep_ == 'nsubj':
+        if token.dep_ == DependencyLabel.ROOT.value:
+            root = token
+        elif token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
             subject = token
+        elif token.lemma_ in special_prep:
+            set_scene = True
+            prep = token
 
-    thsl_sentence = [location.lemma_, subject.lemma_, verb.lemma_]
-    return ['Rule 4', ' '.join([token.lemma_ for token in sentence])]
+    # TODO: consider make CL as Enum and return Union[str, Enum]
+    thsl_sentence: List[Union[str, ThSLClassifier]] = []
+    if set_scene:
+        location_classifier = ThSLClassifier.LOCATION_CL
+        subject_classifier = ThSLClassifier.THING_CL
+        thsl_sentence = [
+            location.lemma_, location_classifier,
+            subject.lemma_, subject_classifier,
+            f'{subject_classifier.value}-{prep.lemma_}-{location_classifier.value}'
+        ]
+    else:
+        thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
+
+    return thsl_sentence
 
 # TODO: define the rules for all types of sentence
 # I got the kids their favorite toys.
