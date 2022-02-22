@@ -107,6 +107,18 @@ def br4_locative_sentence(sentence: TSentence) -> List[str]:
 
     Slocative = (+)Location (+)S (+)Vlocative
     """
+    # assume that 'location' entity label is already assigned before this function
+    location: TempToken = None
+    subject: TempToken = None
+    verb: TempToken = None
+
+    for token in sentence:
+        if token.dep_ == 'ROOT':
+            verb = token
+        elif token.dep_ == 'nsubj':
+            subject = token
+
+    thsl_sentence = [location.lemma_, subject.lemma_, verb.lemma_]
     return ['Rule 4', ' '.join([token.lemma_ for token in sentence])]
 
 # TODO: define the rules for all types of sentence
