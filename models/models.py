@@ -10,8 +10,9 @@ TParagraph = List[TSentence]
 class SignGloss(DynamicEmbeddedDocument):
     meta = {'allow_inheritance': True}
     gloss = StringField()
-    # ISO 639-1 codes
-    lang = StringField()
+    lang = StringField()     # ISO 639-1 codes
+    contexts = ListField()
+    priority = FloatField(min_value=0, max_value=1)
 
 
 class Eng2Sign(Document):

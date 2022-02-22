@@ -71,7 +71,18 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
         eng2sign = Eng2Sign(english=wp['word'])
         glosses = []
         for gloss in wp['glosses']:
-            glosses.append(SignGloss(gloss=gloss['gloss'], lang=gloss['lang']))
+            sign_gloss = SignGloss(
+                gloss=gloss['gloss'],
+                lang=gloss['lang'],
+                contexts=gloss['contexts']
+            )
+
+            try:
+                sign_gloss.priority = gloss['priority']
+            except KeyError:
+                pass
+
+            glosses.append(sign_gloss)
         eng2sign.sign_glosses = glosses
 
         try:
