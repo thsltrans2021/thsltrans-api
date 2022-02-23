@@ -140,7 +140,7 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLClassifier
     thsl_sentence: List[Union[str, ThSLClassifier]] = []
     if set_scene:
         location_classifier = ThSLClassifier.LOCATION_CL
-        subject_classifier = ThSLClassifier.THING_CL
+        subject_classifier = ThSLClassifier.SUBJECT_CL
         thsl_sentence = [
             location.lemma_, location_classifier,
             subject.lemma_, subject_classifier,
@@ -148,6 +148,9 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLClassifier
         ]
     else:
         thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
+
+    # maybe we just return a special class for a `search word` and `content` for searching
+    # not just a pure str
 
     return thsl_sentence
 

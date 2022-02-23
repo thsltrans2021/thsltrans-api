@@ -1,64 +1,21 @@
-from rb_system.rules import (
+from rb_system.basic_sentence_rules import (
     br1_transitive_sentence, br2_intransitive_sentence, br3_ditransitive_sentence,
-    br0_single_word
+    br0_single_word, br4_locative_sentence
 )
 from rb_system.nlp_tools import (
     perform_nlp_process, is_transitive_sentence, is_intransitive_sentence,
-    is_ditransitive_sentence, is_single_word
+    is_ditransitive_sentence, is_single_word, is_locative_sentence
 )
 from models.models import TextData, TSentence, Eng2Sign, SignGloss
-from typing import List, Optional
+from typing import List, Optional, Union, Tuple
+from rb_system.types import ThSLClassifier
+from utils.iterator import powerset
 
 import logging
 
 """
 The translation functions that work on a sentence level only
 """
-
-
-def apply_rules(sentence: TSentence) -> List[str]:
-    """Return a list of rearranged english words"""
-    words = ['not supported']
-    if is_single_word(sentence):
-        words = br0_single_word(sentence)
-    elif is_transitive_sentence(sentence):
-        words = br1_transitive_sentence(sentence)
-    elif is_intransitive_sentence(sentence):
-        # 'Hello.' should not be intransitive sentence
-        words = br2_intransitive_sentence(sentence)
-    elif is_ditransitive_sentence(sentence):
-        words = br3_ditransitive_sentence(sentence)
-    # can we apply a pattern of the rule to categorize a sentence
-    sign_glosses = map_english_to_sign_gloss(words)
-    return sign_glosses
-
-
-def map_english_to_sign_gloss(words: List[str]) -> List[str]:
-    """
-    Convert a list of english words to a list of sign glosses.
-    Map english words to the ThSL database.
-    """
-    glosses: List[str] = []
-    index = 0
-    for idx, word in enumerate(words):
-        split_word = word.split('-')
-
-        if len(split_word) > 1:
-            related_word = split_word[0]
-            search_word = split_word[1]
-            # TODO: mark sth and choose word outside this loop? remember index to insert later?
-            index = idx
-            # print('(1) ---> ', word, split_word, search_word, related_word, index)
-            gloss = retrieve_sign_gloss_from_context(search_word, related_word)
-            glosses.append(gloss)
-        else:
-            # print('(2) ---> ', word, split_word, search_word, related_word, index)
-            search_word = split_word[0]
-            gloss = retrieve_sign_gloss(search_word)
-            glosses.append(gloss)
-
-    return glosses
-    # return words
 
 
 def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]]:
@@ -77,7 +34,81 @@ def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]
     return results
 
 
-def get_glosses_from_words(words: List[Eng2Sign]) -> List[str]:
+def apply_rules(sentence: TSentence) -> List[str]:
+    """Return a list of ThSL glosses"""
+    words = ['not supported']
+    if is_single_word(sentence):
+        words = br0_single_word(sentence)
+    elif is_locative_sentence(sentence):
+        words = br4_locative_sentence(sentence)
+    elif is_transitive_sentence(sentence):
+        words = br1_transitive_sentence(sentence)
+    elif is_intransitive_sentence(sentence):
+        words = br2_intransitive_sentence(sentence)
+    elif is_ditransitive_sentence(sentence):
+        words = br3_ditransitive_sentence(sentence)
+
+    # sign_glosses = map_english_to_sign_gloss(words)
+    sign_glosses = new_map_english_to_sign_gloss(words)
+    return sign_glosses
+
+
+# TODO: know that CL is Enum and deal with it, search the correct enum by context (the word before enum)
+def map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
+    """
+    Convert a list of english words to a list of sign glosses.
+    Map english words to the ThSL database.
+    """
+    logging.info(f'Starting mapping: {words}')
+    classifiers: List[str] = []
+    glosses: List[str] = []
+    index = 0
+    for idx, word in enumerate(words):
+        if isinstance(word, ThSLClassifier):
+            previous_word = words[idx - 1]
+            gloss = retrieve_sign_gloss_from_context(word.value, previous_word)
+            glosses.append(gloss)
+            classifiers.append(gloss)
+            continue
+
+        split_words = word.split('-')
+
+        if len(split_words) > 1:
+            related_word = split_words[0]
+            search_word = split_words[1]
+            # TODO: mark sth and choose word outside this loop? remember index to insert later?
+            index = idx
+            # print('(1) ---> ', word, split_word, search_word, related_word, index)
+            gloss = retrieve_sign_gloss_from_context(search_word, related_word)
+            glosses.append(gloss)
+        else:
+            # print('(2) ---> ', word, split_word, search_word, related_word, index)
+            search_word = split_words[0]
+            gloss = retrieve_sign_gloss(search_word)
+            glosses.append(gloss)
+
+    return glosses
+
+
+def new_map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
+    """
+    Convert a list of english words to a list of sign glosses.
+    Map english words to the ThSL database.
+    """
+    logging.info(f'Starting mapping: {words}')
+    thsl_glosses: List[str] = []
+    for word in words:
+        # TODO: detect verb or prep from class type
+        if '-' in word:
+            gloss = new_retrieve_sign_gloss_for_verb_with_context(word)
+            thsl_glosses.append(gloss)
+        else:
+            gloss = retrieve_sign_gloss(word)
+            thsl_glosses.append(gloss)
+    return thsl_glosses
+
+
+def _get_glosses_from_words(words: List[Eng2Sign]) -> List[str]:
     glosses = []
     for word in words:
         gloss: SignGloss
@@ -88,7 +119,7 @@ def get_glosses_from_words(words: List[Eng2Sign]) -> List[str]:
     return glosses
 
 
-def retrieve_word(word: str) -> Optional[Eng2Sign]:
+def _retrieve_word(word: str) -> Optional[Eng2Sign]:
     results = Eng2Sign.objects(english=word)
     if len(results) == 0:
         logging.info(f"Word '{word}' is not found in the dictionary")
@@ -98,7 +129,7 @@ def retrieve_word(word: str) -> Optional[Eng2Sign]:
     return results[0]
 
 
-def retrieve_word_from_context(word: str, related_word: str) -> Optional[Eng2Sign]:
+def _retrieve_word_from_context(word: str, related_word: str) -> Optional[Eng2Sign]:
     candidate_words = Eng2Sign.objects(english=word)
     related_words = Eng2Sign.objects(english=related_word)
 
@@ -118,7 +149,7 @@ def retrieve_word_from_context(word: str, related_word: str) -> Optional[Eng2Sig
 
 
 def retrieve_sign_gloss(word: str) -> str:
-    result_word = retrieve_word(word)
+    result_word = _retrieve_word(word)
     if not result_word:
         logging.info(f"Word '{word}' is not found in the dictionary")
         return f"word '{word}' is not found in the dictionary"
@@ -133,7 +164,7 @@ def retrieve_sign_gloss(word: str) -> str:
 
 
 def retrieve_sign_gloss_from_context(word: str, related_word: str) -> str:
-    result_word = retrieve_word_from_context(word, related_word)
+    result_word = _retrieve_word_from_context(word, related_word)
     if not result_word:
         logging.info(f"Cannot find a context of '{word}' that matches '{related_word}'")
         return f"word '{word}' is not found in the dictionary"
@@ -145,6 +176,104 @@ def retrieve_sign_gloss_from_context(word: str, related_word: str) -> str:
             return gloss.gloss
     logging.info(f"No gloss of '{word}' is found in the dictionary")
     return f"no gloss of '{word}' is found in the dictionary"
+
+
+def new_retrieve_sign_gloss_for_verb_with_context(word_with_context: str) -> str:
+    """
+    he-walk -> person-walk
+    """
+    split_words = word_with_context.split('-')
+
+    # separate word and context
+    related_word = split_words[0]
+    verb = split_words[1]
+
+    # assume that `english` key is unique
+    candidate_word = Eng2Sign.objects(english=verb)
+    related_word = Eng2Sign.objects(english=related_word)
+    assert len(candidate_word) <= 1, f'[v_with_ctx] duplicated `english` key: {verb}'
+    assert len(related_word) <= 1, f'[v_with_ctx] duplicated `english` key: {related_word}'
+
+    if len(candidate_word) == 0:
+        message = f"Verb '{verb}' is not found in the dictionary"
+        logging.info(message)
+        return message
+
+    # if no context -> use default (highest priority)
+    if len(related_word) == 0:
+        gloss: SignGloss
+        for gloss in candidate_word[0].sign_glosses:
+            if gloss.priority >= 1 and gloss.lang == "en":
+                return gloss.gloss
+
+    possible_matches: List[Tuple[SignGloss, int]] = []
+    related_contexts = set(related_word[0].contexts)
+    related_ctx_combinations = [set(combination) for combination in list(powerset(related_contexts, no_empty=True))]
+    print("related context --> ", related_contexts)
+    print("related ctx com --> ", related_ctx_combinations)
+
+    gloss: SignGloss
+    for gloss in candidate_word[0].sign_glosses:
+        gloss_contexts = gloss.contexts
+        gloss_ctx_combinations = [set(combination) for combination in list(powerset(gloss_contexts, no_empty=True))]
+        print(gloss_ctx_combinations)
+
+        match_count = 0
+        # try matching related_context with gloss_ctx_combinations as much as possible
+        for g_ctx in gloss_ctx_combinations:
+            if g_ctx in related_ctx_combinations:
+                match_count += 1
+        possible_matches.append((gloss, match_count))
+
+    print("matches --> ", possible_matches)
+    assert len(possible_matches) > 0, \
+        f'[v_with_ctx] no possible match, please check whether {candidate_word} has glosses or not'
+
+    # get the results that have the highest matched context
+    results: List[SignGloss] = []
+    max_match_count = 0
+    for match in possible_matches:
+        if match[0].lang == 'en':
+            if match[1] > max_match_count:
+                max_match_count = match[1]
+                results = [match[0]]
+            elif match[1] == max_match_count:
+                results.append(match[0])
+    print("results --> ", [r.gloss for r in results])
+    assert len(results) > 0, f'[v_with_ctx] unexpectedly no result'
+
+    # if there are multiple results, final result based on its priority (assume that priority is unique)
+    final_result: Optional[SignGloss] = None
+    if len(results) > 1:
+        max_priority = -1
+        for result in results:
+            if not result.priority:
+                continue
+            elif result.priority > max_priority:
+                print(result.gloss, result.priority)
+                max_priority = result.priority
+                final_result = result
+    else:
+        final_result = results[0]
+
+    print("final result --> ", final_result.gloss)
+    return final_result.gloss
+
+
+# TODO
+def new_retrieve_sign_gloss_for_prep_with_context(word_with_context: str) -> str:
+    """
+    'subjCL-on-locCL'
+
+    ['table', <ThSLClassifier.LOCATION_CL: 'locCL'>, 'Apple', <ThSLClassifier.SUBJECT_CL: 'subjCL'>, 'subjCL-on-locCL']
+    subjCL-on-locCL -> appleCL-on-tableCL
+    """
+    split_words = word_with_context.split('-')
+    context = split_words[0]
+    verb = split_words[1]
+
+    # separate word and context
+    return ''
 
 
 """

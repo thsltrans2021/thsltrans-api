@@ -167,3 +167,4 @@ class POSLabel(Enum):
 class ThSLClassifier(Enum):
     LOCATION_CL = 'locCL'
     THING_CL = 'thingCL'
+    SUBJECT_CL = 'subjCL'

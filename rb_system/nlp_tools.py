@@ -157,8 +157,8 @@ def is_locative_sentence(sentence: List[Token]):
     """
     prep_phrases = retrieve_preposition_phrases(sentence)
     prep_phrases_of_place = filter_preposition_of_place(prep_phrases)
-    print(prep_phrases)
-    print(prep_phrases_of_place)
+    print("prep phrase: ", prep_phrases)
+    print("prep of place", prep_phrases_of_place)
     return len(prep_phrases_of_place) > 0
 
 

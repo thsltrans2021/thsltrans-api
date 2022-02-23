@@ -1,8 +1,7 @@
 from mongoengine import *
 from spacy.tokens import Token
-from typing import List
+from typing import List, Union, Optional
 
-# TODO: define models for request, response, and db
 TSentence = List[Token]
 TParagraph = List[TSentence]
 
@@ -62,3 +61,18 @@ class TextData:
                 'thsl_translation': paragraph
             })
         return data
+
+
+class ThSLVerbPhrase:
+
+    def __init__(self, verb: Token, subject_of_verb=None, direction=None):
+        self.verb = verb
+        self.subject_of_verb: Optional[Token] = subject_of_verb
+        self.direction: Optional[Token] = direction
+
+
+class ThSLPrepositionPhrase:
+
+    def __init__(self):
+        pass
+
