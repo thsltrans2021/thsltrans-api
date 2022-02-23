@@ -54,13 +54,15 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
                     {
                         "gloss": "MONEY",
                         "lang": "en"
+                        "contexts": [],
+                        "pos": "noun"
                     },
                     {
                         "gloss": "เงิน",
                         "lang": "th"
                     }
                 ],
-                "context": "object"
+                "contexts": []
             }
         ]
     }
@@ -74,9 +76,11 @@ def request_body_to_eng2sign(req: Request) -> List[Eng2Sign]:
             sign_gloss = SignGloss(
                 gloss=gloss['gloss'],
                 lang=gloss['lang'],
-                contexts=gloss['contexts']
+                contexts=gloss['contexts'],
+                pos=gloss['pos']
             )
 
+            # optional fields
             try:
                 sign_gloss.priority = gloss['priority']
             except KeyError:

@@ -162,9 +162,3 @@ class POSLabel(Enum):
     P_WH_PRONOUN = 'WP'
     P_POSSESSIVE_WH_PRONOUN = 'WP$'
     P_WH_ADVERB = 'WRB'
-
-
-class ThSLClassifier(Enum):
-    LOCATION_CL = 'locCL'
-    THING_CL = 'thingCL'
-    SUBJECT_CL = 'subjCL'

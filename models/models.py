@@ -1,3 +1,5 @@
+from enum import Enum
+
 from mongoengine import *
 from spacy.tokens import Token
 from typing import List, Union, Optional
@@ -12,6 +14,10 @@ class SignGloss(DynamicEmbeddedDocument):
     lang = StringField()     # ISO 639-1 codes
     contexts = ListField()
     priority = FloatField(min_value=0, max_value=1)
+    pos = StringField()
+
+    def __repr__(self):
+        return f'SignGloss(gloss={self.gloss})'
 
 
 class Eng2Sign(Document):
@@ -63,6 +69,22 @@ class TextData:
         return data
 
 
+class ThSLClassifier:
+    # LOCATION_CL = 'locCL'
+    # THING_CL = 'thingCL'
+    # SUBJECT_CL = 'subjCL'
+
+    def __init__(self, root_word: Token):
+        self.root_word = root_word
+        self.entity_label = root_word.ent_type_
+
+    def __str__(self):
+        return f'{self.root_word.lemma_}CL'
+
+    def __repr__(self):
+        return f'ThSLClassifier(root_word={self.root_word})'
+
+
 class ThSLVerbPhrase:
 
     def __init__(self, verb: Token, subject_of_verb=None, direction=None):
@@ -70,9 +92,31 @@ class ThSLVerbPhrase:
         self.subject_of_verb: Optional[Token] = subject_of_verb
         self.direction: Optional[Token] = direction
 
+    @property
+    def root_verb(self):
+        return self.verb
+
+    @property
+    def contexts(self):
+        return [self.subject_of_verb, self.direction]
+
 
 class ThSLPrepositionPhrase:
 
-    def __init__(self):
-        pass
+    def __init__(self, prep: Token, prep_subj_cl: ThSLClassifier, prep_obj_cl: ThSLClassifier):
+        self.preposition = prep
+        self.preposition_subj_cl = prep_subj_cl
+        self.preposition_obj_cl = prep_obj_cl
 
+    def __str__(self):
+        return '-'.join([
+            str(self.preposition_subj_cl),
+            self.preposition,
+            str(self.preposition_obj_cl)
+        ])
+
+    def __repr__(self):
+        return f'ThSLPrepositionPhrase({self.preposition_subj_cl},{self.preposition},{self.preposition_obj_cl})'
+
+
+ThSLPhrase = Union[ThSLVerbPhrase, ThSLPrepositionPhrase, ThSLClassifier]
