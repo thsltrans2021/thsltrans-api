@@ -70,9 +70,6 @@ class TextData:
 
 
 class ThSLClassifier:
-    # LOCATION_CL = 'locCL'
-    # THING_CL = 'thingCL'
-    # SUBJECT_CL = 'subjCL'
 
     def __init__(self, root_word: Token):
         self.root_word = root_word
@@ -99,6 +96,9 @@ class ThSLVerbPhrase:
     @property
     def contexts(self):
         return [self.subject_of_verb, self.direction]
+
+    def __repr__(self):
+        return f'ThSLVerbPhrase(verb={self.verb.lemma_}, subj={self.subject_of_verb.lemma_}, dir={self.direction})'
 
 
 class ThSLPrepositionPhrase:

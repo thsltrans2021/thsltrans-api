@@ -106,12 +106,13 @@ def new_map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> Li
         elif isinstance(word, ThSLPrepositionPhrase):
             gloss = new_retrieve_sign_gloss_for_prep_with_context(word)
             thsl_glosses.append(gloss)
-        elif '-' in word:
-            print("Ugly search!", word)
+        elif isinstance(word, ThSLVerbPhrase):
             gloss = new_retrieve_sign_gloss_for_verb_with_context(word)
             thsl_glosses.append(gloss)
+        elif '-' in word:
+            print("Ugly search!", word)
+            thsl_glosses.append(f'[no map] {word}')
         else:
-            print("Normal search!", word)
             gloss = new_retrieve_sign_gloss_for_noun(word)
             thsl_glosses.append(gloss)
     return thsl_glosses
@@ -241,24 +242,22 @@ def new_retrieve_sign_gloss_for_noun(word) -> str:
     return f"no gloss of '{word}' is found in the dictionary"
 
 
-def new_retrieve_sign_gloss_for_verb_with_context(word_with_context: str) -> str:
+def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
     """
     he-walk -> person-walk
     """
-    split_words = word_with_context.split('-')
-
-    # separate word and context
-    related_word = split_words[0]
-    verb = split_words[1]
+    # TODO: handle multiple contexts
+    context = verb_phrase.subject_of_verb
+    verb = verb_phrase.verb
 
     # assume that `english` key is unique
-    candidate_word = Eng2Sign.objects(english=verb)
-    related_word = Eng2Sign.objects(english=related_word)
-    assert len(candidate_word) <= 1, f'[v_with_ctx] duplicated `english` key: {verb}'
-    assert len(related_word) <= 1, f'[v_with_ctx] duplicated `english` key: {related_word}'
+    candidate_word = Eng2Sign.objects(english=verb.lemma_)
+    related_word = Eng2Sign.objects(english=context.lemma_)
+    assert len(candidate_word) <= 1, f'[v_with_ctx] duplicated `english` key: {verb.lemma_}'
+    assert len(related_word) <= 1, f'[v_with_ctx] duplicated `english` key: {context.lemma_}'
 
     if len(candidate_word) == 0:
-        message = f"Verb '{verb}' is not found in the dictionary"
+        message = f"Verb '{verb.lemma_}' is not found in the dictionary"
         logging.info(message)
         return message
 

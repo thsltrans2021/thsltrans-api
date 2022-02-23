@@ -1,5 +1,5 @@
 from typing import List, Union
-from models.models import TSentence, ThSLClassifier, ThSLPhrase, ThSLPrepositionPhrase
+from models.models import TSentence, ThSLClassifier, ThSLPhrase, ThSLPrepositionPhrase, ThSLVerbPhrase
 from spacy.tokens import Token, Span
 from rb_system.nlp_tools import retrieve_preposition_phrases, filter_preposition_of_place
 from rb_system.types import DependencyLabel, POSLabel
@@ -39,7 +39,7 @@ def br1_transitive_sentence(sentence: TSentence) -> List[str]:
     return ['Rule 1', ' '.join([token.lemma_ for token in sentence])]
 
 
-def br2_intransitive_sentence(sentence: TSentence) -> List[str]:
+def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #2 (p.81)
     of a basic sentence.
@@ -57,8 +57,9 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[str]:
             continue
     assert subject is not None, '[b2] Sentence must contain subject'
     assert root is not None, '[b2] Sentence must contain verb'
-    verb = f'{subject.lemma_}-{root.lemma_}'
-    return [subject.lemma_, verb]
+    verb = ThSLVerbPhrase(root, subject)
+    thsl_sentence = [subject.lemma_, verb]
+    return thsl_sentence
 
 
 def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
@@ -146,13 +147,9 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
             location.lemma_, location_classifier,
             subject.lemma_, subject_classifier,
             ThSLPrepositionPhrase(prep, subject_classifier, location_classifier),
-            # f'{subject_classifier.value}-{prep.lemma_}-{location_classifier.value}'
         ]
     else:
         thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
-
-    # maybe we just return a special class for a `search word` and `content` for searching
-    # not just a pure str
 
     print("new br4 --> ", thsl_sentence)
     return thsl_sentence
