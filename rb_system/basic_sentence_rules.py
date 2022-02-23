@@ -1,8 +1,8 @@
 from typing import List, Union
-from models.models import TSentence
+from models.models import TSentence, ThSLClassifier, ThSLPhrase, ThSLPrepositionPhrase
 from spacy.tokens import Token, Span
 from rb_system.nlp_tools import retrieve_preposition_phrases, filter_preposition_of_place
-from rb_system.types import DependencyLabel, POSLabel, ThSLClassifier
+from rb_system.types import DependencyLabel, POSLabel
 
 """
 This code contains rules of basic simple sentence structure (the obligatory part of ThSL sentence).
@@ -105,7 +105,7 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
     return [subject.lemma_, direct_object_str, verb]
 
 
-def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLClassifier]]:
+def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #4 (p.83)
     of a basic sentence.
@@ -136,15 +136,17 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLClassifier
             set_scene = True
             prep = token
 
-    # TODO: consider make CL as Enum and return Union[str, Enum]
-    thsl_sentence: List[Union[str, ThSLClassifier]] = []
+    assert subject is not None, '[b4] Sentence must contain subject'
+
+    thsl_sentence: List[Union[str, ThSLClassifier]]
     if set_scene:
-        location_classifier = ThSLClassifier.LOCATION_CL
-        subject_classifier = ThSLClassifier.SUBJECT_CL
+        location_classifier = ThSLClassifier(location)
+        subject_classifier = ThSLClassifier(subject)
         thsl_sentence = [
             location.lemma_, location_classifier,
             subject.lemma_, subject_classifier,
-            f'{subject_classifier.value}-{prep.lemma_}-{location_classifier.value}'
+            ThSLPrepositionPhrase(prep, subject_classifier, location_classifier),
+            # f'{subject_classifier.value}-{prep.lemma_}-{location_classifier.value}'
         ]
     else:
         thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
@@ -152,6 +154,7 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLClassifier
     # maybe we just return a special class for a `search word` and `content` for searching
     # not just a pure str
 
+    print("new br4 --> ", thsl_sentence)
     return thsl_sentence
 
 # TODO: define the rules for all types of sentence
