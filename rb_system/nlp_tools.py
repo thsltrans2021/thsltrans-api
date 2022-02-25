@@ -1,7 +1,8 @@
 from spacy import Language
-from spacy.tokens import Token, Doc
+from spacy.tokens import Token, Doc, Span
 from models.models import TextData, TParagraph
-from typing import List
+from typing import List, Tuple
+from rb_system.types import EntityLabel, POSLabel, DependencyLabel
 
 import spacy
 
@@ -15,6 +16,8 @@ token.pos_ --> Universal POS tags, see: https://universaldependencies.org/u/pos/
 nlp: Language = spacy.load('en_core_web_sm')
 
 
+# TODO: need to reconsider word segmentation (still have problem with words like 'next to', 'work from home'
+# https://spacy.io/usage/linguistic-features#retokenization
 def perform_nlp_process(text_data: TextData):
     """
     Perform necessary NLP such as part-of-speech tagging and dependency parsing.
@@ -26,10 +29,13 @@ def perform_nlp_process(text_data: TextData):
         processed_paragraph: TParagraph = []
         for sentence in sentences:
             sentence_token = remove_punctuations(sentence)
+            sentence_token = _merge_token_by_entity(sentence_token)
+            print(f"sentence_token: {sentence_token}")
             processed_paragraph.append(sentence_token)
         text_data.processed_data.append(processed_paragraph)
 
 
+# TODO: refactor to use enum
 def is_transitive_sentence(sentence: List[Token]) -> bool:
     """
     A sentence that has a direct object (dobj).
@@ -68,6 +74,7 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
     return False
 
 
+# TODO: refactor to use enum
 def is_intransitive_sentence(sentence: List[Token]) -> bool:
     """
     >>> is_intransitive_sentence(nlp('Hello')[:])
@@ -84,6 +91,7 @@ def is_intransitive_sentence(sentence: List[Token]) -> bool:
     return not is_transitive_sentence(sentence) and not is_ditransitive_sentence(sentence)
 
 
+# TODO: refactor to use enum
 def is_ditransitive_sentence(sentence: List[Token]) -> bool:
     """
     A sentence that has 2 objects (indirect obj followed by direct obj)
@@ -122,13 +130,173 @@ def is_single_word(sentence: List[Token]) -> bool:
     """
     True if the given sentence contains one word.
     """
+    print(f"sentence '{sentence}': {len(sentence)}")
     return len(sentence) == 1
+
+
+def is_locative_sentence(sentence: List[Token]):
+    """
+    True if the given sentence is locative sentence.
+    Locative sentence means that the sentence indicates place or direction.
+
+    try detect preposition of place and check if it's actually talking about place (not time)
+    - Check prepositional noun that comes after the preposition
+
+    >>> is_locative_sentence(nlp('He works at Kasetsart University')[:])
+    True
+    >>> is_locative_sentence(nlp('Mother is at home')[:])
+    True
+    >>> is_locative_sentence(nlp('There is a plate of rice on the table')[:])
+    True
+    >>> is_locative_sentence(nlp('She buys 3 apples')[:])
+    False
+    >>> is_locative_sentence(nlp('I meet him at home on Sunday')[:])
+    True
+    >>> is_locative_sentence(nlp('She works on Monday')[:])
+    False
+    """
+    prep_phrases = retrieve_preposition_phrases(sentence)
+    prep_phrases_of_place = filter_preposition_of_place(prep_phrases)
+    print("prep phrase: ", prep_phrases)
+    print("prep of place", prep_phrases_of_place)
+    return len(prep_phrases_of_place) > 0
+
+
+def retrieve_preposition_phrases(sentence: List[Token]) -> List[Tuple[Token, Token, int, int]]:
+    """
+    Finds preposition phrases from the sentence and return them
+    as tuple of (prep, pobj, prep_idx, pobj_idx).
+    """
+    prep_phrases: List[Tuple[Token, Token, int, int]] = []
+    current_prep = None
+    current_prep_idx = 0
+
+    for i in range(len(sentence)):
+        token: Token = sentence[i]
+        if token.dep_ == DependencyLabel.PREPOSITIONAL_MODIFIER.value or token.tag_ == POSLabel.P_PERP_OR_SUB_CON.value:
+            current_prep = token
+            current_prep_idx = i
+        elif token.dep_ == DependencyLabel.OBJECT_OF_PREPOSITION.value:
+            prep_phrases.append((current_prep, token, current_prep_idx, i))
+    return prep_phrases
+
+
+def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]]):
+    """
+    Returns a list of preposition phrases that are not considered as prepositional phrase of time.
+    """
+    if len(prep_phrases) < 1:
+        return []
+
+    entity_types = [EntityLabel.DATE, EntityLabel.TIME]
+    result_prep_phrases: List[Tuple[Token, Token, int, int]] = []
+    for prep_p in prep_phrases:
+        try:
+            entity_label = EntityLabel(prep_p[1].ent_type_)
+            if entity_label in entity_types:
+                continue
+            result_prep_phrases.append(prep_p)
+        except ValueError:
+            result_prep_phrases.append(prep_p)
+
+    return result_prep_phrases
+
+
+def has_org_entity(sentence: List[Token]) -> bool:
+    org_entities = retrieve_entities(sentence, [EntityLabel.ORGANIZATION])
+    return len(org_entities) > 0
+
+
+def retrieve_entities(sentence: List[Token], entity_types: List[EntityLabel]) -> List[Tuple[Token, str]]:
+    """
+    Returns a list of the detected entities with their labels
+
+    >>> test_sentence = nlp('He works at Kasetsart University.')[:]
+    >>> retrieve_entities(test_sentence, [EntityLabel.ORGANIZATION])
+    [(Kasetsart, 'ORG'), (University, 'ORG')]
+
+    >>> test_sentence = nlp('He works at Kasetsart University and Apple on Monday')[:]
+    >>> retrieve_entities(test_sentence, [EntityLabel.ORGANIZATION])
+    [(Kasetsart, 'ORG'), (University, 'ORG'), (Apple, 'ORG')]
+
+    >>> test_sentence = nlp('He works at Kasetsart University and Apple on Monday')[:]
+    >>> retrieve_entities(test_sentence, [EntityLabel.ORGANIZATION, EntityLabel.DATE])
+    [(Kasetsart, 'ORG'), (University, 'ORG'), (Apple, 'ORG'), (Monday, 'DATE')]
+    """
+    if len(entity_types) == 0:
+        return [(token, token.ent_type_) for token in sentence if token.ent_type_ != '']
+
+    entities: List[Tuple[Token, str]] = []
+    for token in sentence:
+        try:
+            entity_label = EntityLabel(token.ent_type_)
+            if entity_label in entity_types:
+                entities.append((token, token.ent_type_))
+        except ValueError:
+            continue
+
+    return entities
+
+
+def _merge_token_by_entity(sentence: List[Token]) -> List[Token]:
+    """
+    - I work at Kasetsart University and Apple Inc.
+
+    I work at Kasetsart and Apple Inc.
+    [(Kasetsart, 'ORG'), (and, 'ORG'), (Apple, 'ORG'), (Inc., 'ORG')]
+    [(3, 4, 4, 5, 5, 6)]
+
+    Entities
+    Kasetsart and Apple Inc. | ORG | 10 | 34
+    """
+    entity_indexes = []
+    entity_indexes_groups = []
+    for i in range(len(sentence)):
+        if i + 1 == len(sentence):
+            if len(entity_indexes) > 1:
+                entity_indexes_groups.append(set(entity_indexes))
+            break
+
+        token: Token = sentence[i]
+        next_token: Token = sentence[i].nbor()
+
+        if token.ent_type_ == next_token.ent_type_:
+            if token.ent_type_ != '':
+                entity_indexes.append(i)
+                entity_indexes.append(i + 1)
+        else:
+            if len(entity_indexes) > 1:
+                entity_indexes_groups.append(set(entity_indexes))
+                entity_indexes = []
+
+    # print(entities)
+    # print(entity_indexes_groups)
+
+    sentence_doc = nlp(' '.join([token.text for token in sentence]))
+
+    # print("Before: ", [t.text for t in sentence_doc])
+    with sentence_doc.retokenize() as retokenizer:
+        for indexes in entity_indexes_groups:
+            start = min(indexes)
+            end = max(indexes) + 1
+            retokenizer.merge(
+                sentence_doc[start:end],
+                attrs={
+                    "LEMMA": " ".join([sentence[i].lemma_ for i in indexes]),
+                }
+            )
+
+    new_sentence = [token for token in sentence_doc]
+    return new_sentence
 
 
 def remove_punctuations(sentence: List[Token]) -> List[Token]:
     """
     Remove punctuations (e.g. '.', '?') from the given sentence.
+
+    Note: it also removes "-" from "work-from-home" as well ;(
     """
+    print(f"before: {sentence}")
     return [token for token in sentence if not token.is_punct]
 
 
@@ -157,22 +325,23 @@ if __name__ == '__main__':
     `python -m spacy download en_core_web_sm`
     """
     while True:
-        text = input('text: ')
+        text = input('text (hit enter to quit): ')
         if text == '':
             break
         doc: Doc = nlp(text)
         words = [token.lemma_ for token in doc]
-        print()
 
         # Sentence detection
         sentences = list(doc.sents)
+
         for s in sentences:
             # displacy.serve(s, style='dep')
-            print(s)
+            print(f'\n{s}')
             print(f'| {"token.lemma_":^10} | {"token.pos_":^7} | {"token.tag_":^5} | {"token.dep_":^10} |')
             print('-------------------------------------------------------')
+            new_s = _merge_token_by_entity(s)
             token: Token
-            for token in s:
+            for token in new_s:
                 if not token.is_punct:
                     print(f'| {token.lemma_:<12} | {token.pos_:<10} | {token.tag_:<10} | {token.dep_:<10} | {spacy.explain(token.dep_)}')
                     # print(f'  - {token.text} is a child of {[a.text for a in token.ancestors]}')
@@ -183,12 +352,16 @@ if __name__ == '__main__':
                     # except IndexError:
                     #     print(f'{token.text} has neighbor: {token.nbor()}')
             print()
-            print(f'Is transitive sentence? {is_transitive_sentence(s)}')
-            print(f'Is intransitive sentence? {is_intransitive_sentence(s)}')
-            print(f'Is ditransitive sentence? {is_ditransitive_sentence(s)}')
+            print(f'Is transitive sentence? {is_transitive_sentence(new_s)}')
+            print(f'Is intransitive sentence? {is_intransitive_sentence(new_s)}')
+            print(f'Is ditransitive sentence? {is_ditransitive_sentence(new_s)}')
+            print(f'Is locative sentence? {is_locative_sentence(new_s)}')
             print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
-        print('=============================')
-        print()
 
-# a  DET    DT   det       determiner
+        print('\nEntities')
+        for ent in doc.ents:
+            print(f'{ent.text} | {ent.label_} | {ent.start_char} | {ent.end_char}')
+
+        print('=============================\n')
+
 # token.tag_ can check plural
