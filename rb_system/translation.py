@@ -245,9 +245,15 @@ def new_retrieve_sign_gloss_for_noun(word) -> str:
 def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
     """
     he-walk -> person-walk
+
+    verb associates with its subj's or obj's classifier
     """
-    # TODO: handle multiple contexts
-    context = verb_phrase.subject_of_verb
+    # TODO: handle multiple contexts (br3)
+    # contexts = verb_phrase.contexts
+    # print("attr --> ", contexts)
+    # print("attr 1 --> ", getattr(verb_phrase, 'subject'))
+
+    context = verb_phrase.subject
     verb = verb_phrase.verb
 
     # assume that `english` key is unique
@@ -265,8 +271,13 @@ def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -
     if len(related_word) == 0:
         gloss: SignGloss
         for gloss in candidate_word[0].sign_glosses:
-            if gloss.priority >= 1 and gloss.lang == "en":
-                return gloss.gloss
+            try:
+                if gloss.priority >= 1 and gloss.lang == "en":
+                    return gloss.gloss
+            # no priority field -> return whatever
+            except TypeError:
+                if gloss.lang == "en":
+                    return gloss.gloss
 
     possible_matches = _count_possible_matches(candidate_word[0], related_word[0])
     assert len(possible_matches) > 0, \

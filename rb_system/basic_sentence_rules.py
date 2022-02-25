@@ -57,7 +57,7 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
             continue
     assert subject is not None, '[b2] Sentence must contain subject'
     assert root is not None, '[b2] Sentence must contain verb'
-    verb = ThSLVerbPhrase(root, subject)
+    verb = ThSLVerbPhrase(verb=root, subj_of_verb=subject)
     thsl_sentence = [subject.lemma_, verb]
     return thsl_sentence
 
@@ -97,13 +97,16 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
                 subject = token
             elif token.dep_ == 'dative':
                 indirect_object = token
+
     assert direct_object_str != '', '[b3] Sentence must contain indirect object'
     assert indirect_object is not None, '[b3] Sentence must contain direct object'
-    # TODO: choose CL for the direct object
-    dobj_cl = 'thingCL'
-    # TODO: classify whether the pronoun is first or third person
-    verb = f'{subject.lemma_}-{root.lemma_} {dobj_cl}-{indirect_object.lemma_}'
-    return [subject.lemma_, direct_object_str, verb]
+
+    # dobj_cl = 'thingCL'
+    # verb = f'{subject.lemma_}-{root.lemma_} {dobj_cl}-{indirect_object.lemma_}'
+    verb = ThSLVerbPhrase(subj_of_verb=subject, verb=root, iobj_of_verb=indirect_object, dobj_phrase=direct_object_str)
+    thsl_sentence = [subject.lemma_, direct_object_str, verb]
+    print("new b3 --> ", thsl_sentence)
+    return thsl_sentence
 
 
 def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:

@@ -11,7 +11,7 @@ TParagraph = List[TSentence]
 class SignGloss(DynamicEmbeddedDocument):
     meta = {'allow_inheritance': True}
     gloss = StringField()
-    lang = StringField()     # ISO 639-1 codes
+    lang = StringField()  # ISO 639-1 codes
     contexts = ListField()
     priority = FloatField(min_value=0, max_value=1)
     pos = StringField()
@@ -84,9 +84,18 @@ class ThSLClassifier:
 
 class ThSLVerbPhrase:
 
-    def __init__(self, verb: Token, subject_of_verb=None, direction=None):
+    def __init__(
+            self,
+            verb: Token,
+            subj_of_verb=None, dobj_of_verb=None, iobj_of_verb=None,
+            dobj_phrase=None,
+            direction=None
+    ):
         self.verb = verb
-        self.subject_of_verb: Optional[Token] = subject_of_verb
+        self.subject: Optional[Token] = subj_of_verb
+        self.direct_obj: Optional[Token] = dobj_of_verb
+        self.direct_obj_phrase: Optional[str] = dobj_phrase
+        self.indirect_obj: Optional[Token] = iobj_of_verb
         self.direction: Optional[Token] = direction
 
     @property
@@ -95,10 +104,22 @@ class ThSLVerbPhrase:
 
     @property
     def contexts(self):
-        return [self.subject_of_verb, self.direction]
+        contexts = {}
+        if self.subject is not None:
+            contexts['subject'] = self.subject
+        if self.direct_obj is not None:
+            contexts['direct_obj'] = self.direct_obj
+        if self.direct_obj_phrase is not None:
+            contexts['direct_obj_phrase'] = self.direct_obj_phrase
+        if self.indirect_obj is not None:
+            contexts['indirect_obj'] = self.indirect_obj
+        if self.direction is not None:
+            contexts['direction'] = self.direction
+
+        return contexts
 
     def __repr__(self):
-        return f'ThSLVerbPhrase(verb={self.verb.lemma_}, subj={self.subject_of_verb.lemma_}, dir={self.direction})'
+        return f'ThSLVerbPhrase(verb={self.verb.lemma_},ctx={self.contexts})'
 
 
 class ThSLPrepositionPhrase:
