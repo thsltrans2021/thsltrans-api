@@ -24,6 +24,21 @@ def validate_dict_request_body(req: Request) -> bool:
         return False
 
 
+def is_request_body_valid(req: Request) -> bool:
+    """Validate request from `add_gloss_to_word()` controller"""
+    required_keys = ['word', 'glosses']
+    try:
+        req_body = dict(req.json)
+        for key in required_keys:
+            if key not in req_body.keys():
+                return False
+        return True
+    except TypeError:
+        return False
+    except KeyError:
+        return False
+
+
 def validate_trans_request_body(req: Request) -> bool:
     """Validate the request body from `generate_translation()` controller"""
     try:
@@ -176,3 +191,51 @@ def eng2sign_to_json(eng2sign: Eng2Sign) -> Dict:
         del eng2sign_dict['sign_glosses'][i]['_cls']
 
     return eng2sign_dict
+
+
+def append_gloss_to_word(request: Request) -> Eng2Sign:
+    """
+    {
+        "word": "give",
+        "glosses": [
+            {
+                "gloss": "Pron1-GIVEroundobj-Pron3",
+                "lang": "en",
+                "pos": "verb",
+                "contexts": [
+                    "object",
+                    "round",
+                    "pron1",
+                    "pron3",
+                    "test"
+                ]
+            }
+        ]
+    }
+    """
+    req_body = dict(request.json)
+    eng2sign: Eng2Sign = Eng2Sign.objects(english=req_body['word'])[0]
+    glosses: List[SignGloss] = eng2sign.sign_glosses
+    print(req_body['glosses'])
+
+    for gloss in req_body['glosses']:
+        new_gloss = SignGloss(
+            gloss=gloss['gloss'],
+            lang=gloss['lang'],
+            contexts=gloss['contexts']
+        )
+
+        try:
+            new_gloss.pos = gloss['pos']
+        except KeyError:
+            pass
+
+        try:
+            new_gloss.priority = gloss['priority']
+        except KeyError:
+            pass
+
+        glosses.append(new_gloss)
+
+    eng2sign.sign_glosses = glosses
+    return eng2sign

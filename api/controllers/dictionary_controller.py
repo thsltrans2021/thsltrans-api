@@ -60,3 +60,18 @@ def update_word():
         'message': 'Success',
         'data': eng2sign_to_json(result)
     }), 200
+
+
+@dictionary.route('/words', methods=['PUT'])
+def add_gloss_to_word():
+    if not is_request_body_valid(request):
+        return jsonify({
+            'message': 'Missing some field(s) in request body'
+        }), 400
+
+    result = append_gloss_to_word(request)
+    result.save()
+    return jsonify({
+        'message': 'Success',
+        'data': eng2sign_to_json(result)
+    }), 200

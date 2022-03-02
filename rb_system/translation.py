@@ -249,8 +249,8 @@ def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -
     verb associates with its subj's or obj's classifier
     """
     # TODO: handle multiple contexts (br3)
-    # contexts = verb_phrase.contexts
-    # print("attr --> ", contexts)
+    contexts = verb_phrase.contexts
+    print("attr --> ", contexts)
     # print("attr 1 --> ", getattr(verb_phrase, 'subject'))
 
     context = verb_phrase.subject
