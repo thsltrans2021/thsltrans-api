@@ -52,43 +52,6 @@ def apply_rules(sentence: TSentence) -> List[str]:
     return sign_glosses
 
 
-# TODO: know that CL is Enum and deal with it, search the correct enum by context (the word before enum)
-def map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
-    """
-    Convert a list of english words to a list of sign glosses.
-    Map english words to the ThSL database.
-    """
-    logging.info(f'Starting mapping: {words}')
-    classifiers: List[str] = []
-    glosses: List[str] = []
-    index = 0
-    for idx, word in enumerate(words):
-        if isinstance(word, ThSLClassifier):
-            previous_word = words[idx - 1]
-            gloss = retrieve_sign_gloss_from_context(word.root_word.lemma_, previous_word)
-            glosses.append(gloss)
-            classifiers.append(gloss)
-            continue
-
-        split_words = word.split('-')
-
-        if len(split_words) > 1:
-            related_word = split_words[0]
-            search_word = split_words[1]
-            # TODO: mark sth and choose word outside this loop? remember index to insert later?
-            index = idx
-            # print('(1) ---> ', word, split_word, search_word, related_word, index)
-            gloss = retrieve_sign_gloss_from_context(search_word, related_word)
-            glosses.append(gloss)
-        else:
-            # print('(2) ---> ', word, split_word, search_word, related_word, index)
-            search_word = split_words[0]
-            gloss = retrieve_sign_gloss(search_word)
-            glosses.append(gloss)
-
-    return glosses
-
-
 def new_map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
     """
     Convert a list of english words to a list of sign glosses.
@@ -98,22 +61,22 @@ def new_map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> Li
     thsl_glosses: List[str] = []
     for word in words:
         if isinstance(word, ThSLClassifier):
-            gloss = new_retrieve_thsl_classifier_gloss(word)
+            gloss = retrieve_thsl_classifier_gloss(word)
             if not gloss:
                 thsl_glosses.append(f"No gloss of '{word.root_word.lemma_}' is found in the dictionary")
             else:
                 thsl_glosses.append(gloss.gloss)
         elif isinstance(word, ThSLPrepositionPhrase):
-            gloss = new_retrieve_sign_gloss_for_prep_with_context(word)
+            gloss = retrieve_sign_gloss_for_prep_with_context(word)
             thsl_glosses.append(gloss)
         elif isinstance(word, ThSLVerbPhrase):
-            gloss = new_retrieve_sign_gloss_for_verb_with_context(word)
+            gloss = retrieve_sign_gloss_for_verb_with_context(word)
             thsl_glosses.append(gloss)
         elif '-' in word:
             print("Ugly search!", word)
             thsl_glosses.append(f'[no map] {word}')
         else:
-            gloss = new_retrieve_sign_gloss_for_noun(word)
+            gloss = retrieve_sign_gloss_for_noun(word)
             thsl_glosses.append(gloss)
     return thsl_glosses
 
@@ -158,36 +121,6 @@ def _retrieve_word_from_context(word: str, related_word: str) -> Optional[Eng2Si
     return
 
 
-def retrieve_sign_gloss(word: str) -> str:
-    result_word = _retrieve_word(word)
-    if not result_word:
-        logging.info(f"Word '{word}' is not found in the dictionary")
-        return f"word '{word}' is not found in the dictionary"
-
-    gloss: SignGloss
-    for gloss in result_word.sign_glosses:
-        if gloss.lang == 'en':
-            logging.info(f"Found gloss for a word '{result_word.english}' in the dictionary")
-            return gloss.gloss
-    logging.info(f"No gloss of '{word}' is found in the dictionary")
-    return f"no gloss of '{word}' is found in the dictionary"
-
-
-def retrieve_sign_gloss_from_context(word: str, related_word: str) -> str:
-    result_word = _retrieve_word_from_context(word, related_word)
-    if not result_word:
-        logging.info(f"Cannot find a context of '{word}' that matches '{related_word}'")
-        return f"word '{word}' is not found in the dictionary"
-
-    gloss: SignGloss
-    for gloss in result_word.sign_glosses:
-        if gloss.lang == 'en':
-            logging.info(f"Found word '{result_word.english}' in the dictionary")
-            return gloss.gloss
-    logging.info(f"No gloss of '{word}' is found in the dictionary")
-    return f"no gloss of '{word}' is found in the dictionary"
-
-
 def _get_context_combinations(contexts) -> List[set]:
     contexts_set = set(contexts)
     combinations = [set(combination) for combination in list(powerset(contexts_set, no_empty=True))]
@@ -226,7 +159,7 @@ def _filter_highest_matched_results(possible_matches: List[Tuple[SignGloss, int]
     return results
 
 
-def new_retrieve_sign_gloss_for_noun(word) -> str:
+def retrieve_sign_gloss_for_noun(word) -> str:
     result = _retrieve_word(word)
     if not result:
         logging.info(f"Word '{word}' is not found in the dictionary")
@@ -243,7 +176,7 @@ def new_retrieve_sign_gloss_for_noun(word) -> str:
     return f"no gloss of '{word}' is found in the dictionary"
 
 
-def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
+def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
     """
     he-walk -> person-walk
 
@@ -329,7 +262,7 @@ def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -
     return final_result.gloss
 
 
-def new_retrieve_thsl_classifier_gloss(classifier: ThSLClassifier) -> Optional[SignGloss]:
+def retrieve_thsl_classifier_gloss(classifier: ThSLClassifier) -> Optional[SignGloss]:
     print("search for CL:", classifier.root_word.lemma_)
     search_results = Eng2Sign.objects(english=classifier.root_word.lemma_)
     if len(search_results) == 0:
@@ -351,7 +284,7 @@ def new_retrieve_thsl_classifier_gloss(classifier: ThSLClassifier) -> Optional[S
     return root_gloss
 
 
-def new_retrieve_sign_gloss_for_prep_with_context(prep_phrase: ThSLPrepositionPhrase) -> str:
+def retrieve_sign_gloss_for_prep_with_context(prep_phrase: ThSLPrepositionPhrase) -> str:
     """
     'subjCL-on-locCL'
     {
@@ -395,8 +328,8 @@ def new_retrieve_sign_gloss_for_prep_with_context(prep_phrase: ThSLPrepositionPh
         ],
     }
     """
-    prep_subj = new_retrieve_thsl_classifier_gloss(prep_phrase.preposition_subj_cl)
-    prep_obj = new_retrieve_thsl_classifier_gloss(prep_phrase.preposition_obj_cl)
+    prep_subj = retrieve_thsl_classifier_gloss(prep_phrase.preposition_subj_cl)
+    prep_obj = retrieve_thsl_classifier_gloss(prep_phrase.preposition_obj_cl)
 
     search_results = Eng2Sign.objects(english=prep_phrase.preposition.lemma_)
     if len(search_results) == 0:
