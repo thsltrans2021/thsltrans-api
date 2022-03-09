@@ -62,50 +62,57 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     return thsl_sentence
 
 
-def br3_ditransitive_sentence(sentence: TSentence) -> List[str]:
+def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #3 (p.81)
     of a basic sentence.
 
-    (1) SDiT = (+|-)S (+|-)DO (+)V
+    (1) SDiT = (+|-)S (+|-)DO (+)V   -> want to identify subject
         SDiT = (+|-)DO (+|-)S (+)V
+
     (2) SDiT = (+|-)S (+|-)DO (+)[S-V-doCL-IndirectObject] -> Mother gives me THB40 ('me' is indirect object)
 
+    Note: verb of this type of sentence already describes subject and indirect object
     Note: doCL = the classifier of the direct object
     """
     # dative that follows ROOT -> indirect object
     # the second dobj -> real direct object
     # if the subject is a name of sth. -> should state subject twice
     subject: TempToken = None
-    direct_object_str = ''
+    direct_object: TempToken = None
     indirect_object: TempToken = None
     root: TempToken = None
-    sentence_span: TempSpan = None
+    quantity: TempToken = None
+
     for token in sentence:
-        if token.dep_ == 'ROOT':
-            sentence_span = token.sent
+        if token.dep_ == 'nsubj':
+            subject = token
+        elif token.dep_ == 'ROOT':
             root = token
-            break
-    noun_phrases = [[t for t in span] for span in sentence_span.noun_chunks]
-    for idx, np in enumerate(noun_phrases):
-        # TODO: should we cut possessive modifiers (e.g. 'my', 'her', 'him') out?
-        if idx > 1:
-            direct_object_str = ' '.join([t.lemma_ for t in np if t.dep_ != 'det'])
-            break
-        for token in np:
-            if token.dep_ == 'nsubj':
-                subject = token
-            elif token.dep_ == 'dative':
-                indirect_object = token
+        elif token.dep_ == 'dobj':
+            direct_object = token
+        elif token.dep_ == 'dative':
+            indirect_object = token
+        elif token.ent_type_ == 'CARDINAL':
+            quantity = token
 
-    assert direct_object_str != '', '[b3] Sentence must contain indirect object'
-    assert indirect_object is not None, '[b3] Sentence must contain direct object'
+    assert subject is not None, '[b3] Sentence must contain subject'
+    assert root is not None, '[b3] Sentence must contain verb'
+    assert direct_object is not None, '[b3] Sentence must contain direct object'
+    assert indirect_object is not None, '[b3] Sentence must contain indirect object'
 
-    # dobj_cl = 'thingCL'
-    # verb = f'{subject.lemma_}-{root.lemma_} {dobj_cl}-{indirect_object.lemma_}'
-    verb = ThSLVerbPhrase(subj_of_verb=subject, verb=root, iobj_of_verb=indirect_object, dobj_phrase=direct_object_str)
-    thsl_sentence = [subject.lemma_, direct_object_str, verb]
-    print("new b3 --> ", thsl_sentence)
+    # TODO: add more context for multiple types of `give` (e.g. give to many ppl)
+    verb = ThSLVerbPhrase(subj_of_verb=subject, verb=root, iobj_of_verb=indirect_object, dobj_of_verb=direct_object)
+    thsl_sentence = [direct_object.lemma_, verb]
+
+    if quantity is not None:
+        thsl_sentence.insert(0, quantity.lemma_)
+
+    # if subj is not Pron, explicitly specify subject
+    if subject.pos_ != 'PRON':
+        thsl_sentence.insert(0, subject.lemma_)
+
+    # print("new b3 --> ", thsl_sentence)
     return thsl_sentence
 
 
@@ -119,7 +126,6 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     "I work at Kasesart University.",
             "Mother is at home.",
     """
-    # TODO: setting scene for 'in', 'on', 'under', etc. perp
     set_scene = False
     special_prep = ['in', 'on', 'under']
     subject: TempToken = None
@@ -154,7 +160,6 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     else:
         thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
 
-    print("new br4 --> ", thsl_sentence)
     return thsl_sentence
 
 # TODO: define the rules for all types of sentence

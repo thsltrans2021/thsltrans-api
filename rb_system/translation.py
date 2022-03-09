@@ -188,17 +188,18 @@ def retrieve_sign_gloss_from_context(word: str, related_word: str) -> str:
     return f"no gloss of '{word}' is found in the dictionary"
 
 
-def _count_possible_matches(target_word: Eng2Sign, related_word: Union[Eng2Sign, SignGloss]) -> List[Tuple[SignGloss, int]]:
-    related_contexts = set(related_word.contexts)
-    related_ctx_combinations = [set(combination) for combination in list(powerset(related_contexts, no_empty=True))]
-    print("related context --> ", related_contexts)
-    print("related ctx combin --> ", related_ctx_combinations)
+def _get_context_combinations(contexts) -> List[set]:
+    contexts_set = set(contexts)
+    combinations = [set(combination) for combination in list(powerset(contexts_set, no_empty=True))]
+    return combinations
 
+
+def _count_possible_matches(target_word: Eng2Sign, related_ctx_combinations: List[set]) -> List[Tuple[SignGloss, int]]:
     possible_matches: List[Tuple[SignGloss, int]] = []
     gloss: SignGloss
     for gloss in target_word.sign_glosses:
         gloss_ctx_combinations = [set(combination) for combination in list(powerset(gloss.contexts, no_empty=True))]
-        print("gloss com --> ", gloss_ctx_combinations)
+        # print(f"gloss '{gloss.gloss}' com --> ", gloss_ctx_combinations)
 
         match_count = 0
         # try matching related_context with gloss_ctx_combinations as much as possible
@@ -248,29 +249,44 @@ def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -
 
     verb associates with its subj's or obj's classifier
     """
-    # TODO: handle multiple contexts (br3)
-    contexts = verb_phrase.contexts
-    print("attr --> ", contexts)
-    # print("attr 1 --> ", getattr(verb_phrase, 'subject'))
-
-    context = verb_phrase.subject
-    verb = verb_phrase.verb
-
     # assume that `english` key is unique
-    candidate_word = Eng2Sign.objects(english=verb.lemma_)
-    related_word = Eng2Sign.objects(english=context.lemma_)
-    assert len(candidate_word) <= 1, f'[v_with_ctx] duplicated `english` key: {verb.lemma_}'
-    assert len(related_word) <= 1, f'[v_with_ctx] duplicated `english` key: {context.lemma_}'
+    verb = verb_phrase.verb
+    candidate_words = Eng2Sign.objects(english=verb.lemma_)
+    assert len(candidate_words) <= 1, f'[v_with_ctx] duplicated `english` key: {verb.lemma_}'
 
-    if len(candidate_word) == 0:
+    if len(candidate_words) == 0:
         message = f"Verb '{verb.lemma_}' is not found in the dictionary"
         logging.info(message)
         return message
 
+    verb_contexts = verb_phrase.contexts
+    # print("attr --> ", verb_contexts)
+
+    unwanted_pos = ["verb", "classifier", "preposition"]
+    context_glosses: List[Tuple[int, SignGloss]] = []
+    related_words = []
+    related_words_idx = 0
+    for context in verb_contexts.values():
+        result_ctx = _retrieve_word(context.lemma_)
+        if result_ctx is None:
+            continue
+
+        ctx_glosses = []
+        for gloss in result_ctx.sign_glosses:
+            if gloss.pos in unwanted_pos:
+                continue
+            elif gloss.lang == "en":
+                ctx_glosses.append(gloss)
+
+        if len(ctx_glosses) > 0:
+            context_glosses = context_glosses + [(related_words_idx, gloss) for gloss in ctx_glosses]
+            related_words.append(result_ctx)
+            related_words_idx += 1
+
     # if no context -> use default (highest priority)
-    if len(related_word) == 0:
+    if len(context_glosses) == 0:
         gloss: SignGloss
-        for gloss in candidate_word[0].sign_glosses:
+        for gloss in candidate_words[0].sign_glosses:
             try:
                 if gloss.priority >= 1 and gloss.lang == "en":
                     return gloss.gloss
@@ -279,9 +295,17 @@ def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -
                 if gloss.lang == "en":
                     return gloss.gloss
 
-    possible_matches = _count_possible_matches(candidate_word[0], related_word[0])
+    # append all gloss' ctx of all words related to verb (sub, iobj, dobj, etc.)
+    ctx_combinations = []
+    for word_idx, ctx_gloss in context_glosses:
+        ctx_gloss: SignGloss
+        all_contexts = ctx_gloss.contexts + related_words[word_idx].contexts
+        combinations = _get_context_combinations(all_contexts)
+        ctx_combinations = ctx_combinations + combinations
+
+    possible_matches = _count_possible_matches(candidate_words[0], ctx_combinations)
     assert len(possible_matches) > 0, \
-        f'[v_with_ctx] no possible match, please check whether {candidate_word} has glosses or not'
+        f'[v_with_ctx] no possible match, please check whether {candidate_words} has glosses or not'
 
     # get the results that have the highest matched context
     results = _filter_highest_matched_results(possible_matches)
@@ -302,7 +326,6 @@ def new_retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -
     else:
         final_result = results[0][0]
 
-    print("final result --> ", final_result.gloss)
     return final_result.gloss
 
 
@@ -386,8 +409,13 @@ def new_retrieve_sign_gloss_for_prep_with_context(prep_phrase: ThSLPrepositionPh
         return f"no gloss of '{prep_phrase}' is found in the dictionary"
 
     prep: Eng2Sign = search_results[0]
-    possible_matches_subj = _count_possible_matches(prep, prep_subj)
-    possible_matches_obj = _count_possible_matches(prep, prep_obj)
+    prep_subj_ctx_com = _get_context_combinations(prep_subj.contexts)
+    prep_obj_ctx_com = _get_context_combinations(prep_obj.contexts)
+    print("prep subj com -> ", prep_subj_ctx_com)
+    print("prep obj com -> ", prep_obj_ctx_com)
+
+    possible_matches_subj = _count_possible_matches(prep, prep_subj_ctx_com)
+    possible_matches_obj = _count_possible_matches(prep, prep_obj_ctx_com)
     print("matches (subj) --> ", possible_matches_subj)
     print("matches (obj) --> ", possible_matches_obj)
 
