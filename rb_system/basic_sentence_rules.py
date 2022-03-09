@@ -84,7 +84,6 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     root: TempToken = None
     quantity: TempToken = None
 
-    # TODO: use enum
     for token in sentence:
         if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
             subject = token
