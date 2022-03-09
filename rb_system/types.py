@@ -12,6 +12,7 @@ class EntityLabel(Enum):
     ORGANIZATION = 'ORG'
     OTHER_LOCATION = 'LOC'
     GEOGRAPHIC_LOCATION = 'GPE'
+    CARDINAL = 'CARDINAL'
 
 
 class DependencyLabel(Enum):

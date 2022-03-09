@@ -2,7 +2,7 @@ from typing import List, Union
 from models.models import TSentence, ThSLClassifier, ThSLPhrase, ThSLPrepositionPhrase, ThSLVerbPhrase
 from spacy.tokens import Token, Span
 from rb_system.nlp_tools import retrieve_preposition_phrases, filter_preposition_of_place
-from rb_system.types import DependencyLabel, POSLabel
+from rb_system.types import DependencyLabel, POSLabel, EntityLabel
 
 """
 This code contains rules of basic simple sentence structure (the obligatory part of ThSL sentence).
@@ -50,7 +50,7 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     root: TempToken = None
     for idx, token in enumerate(sentence):
         try:
-            if idx > 0 and token.dep_ == 'ROOT':
+            if idx > 0 and token.dep_ == DependencyLabel.ROOT.value:
                 subject = token.nbor(-1)
                 root = token
         except IndexError:
@@ -84,16 +84,17 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     root: TempToken = None
     quantity: TempToken = None
 
+    # TODO: use enum
     for token in sentence:
-        if token.dep_ == 'nsubj':
+        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
             subject = token
-        elif token.dep_ == 'ROOT':
+        elif token.dep_ == DependencyLabel.ROOT.value:
             root = token
-        elif token.dep_ == 'dobj':
+        elif token.dep_ == DependencyLabel.DIRECT_OBJECT.value:
             direct_object = token
-        elif token.dep_ == 'dative':
+        elif token.dep_ == DependencyLabel.DATIVE.value:
             indirect_object = token
-        elif token.ent_type_ == 'CARDINAL':
+        elif token.ent_type_ == EntityLabel.CARDINAL.value:
             quantity = token
 
     assert subject is not None, '[b3] Sentence must contain subject'
@@ -109,7 +110,7 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
         thsl_sentence.insert(0, quantity.lemma_)
 
     # if subj is not Pron, explicitly specify subject
-    if subject.pos_ != 'PRON':
+    if subject.pos_ != POSLabel.U_PRONOUN.value:
         thsl_sentence.insert(0, subject.lemma_)
 
     # print("new b3 --> ", thsl_sentence)
