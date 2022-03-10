@@ -47,12 +47,11 @@ def apply_rules(sentence: TSentence) -> List[str]:
     elif is_ditransitive_sentence(sentence):
         words = br3_ditransitive_sentence(sentence)
 
-    # sign_glosses = map_english_to_sign_gloss(words)
-    sign_glosses = new_map_english_to_sign_gloss(words)
+    sign_glosses = map_english_to_sign_gloss(words)
     return sign_glosses
 
 
-def new_map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
+def map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
     """
     Convert a list of english words to a list of sign glosses.
     Map english words to the ThSL database.
