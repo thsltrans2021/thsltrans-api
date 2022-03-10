@@ -103,7 +103,7 @@ class ThSLVerbPhrase:
         return self.verb
 
     @property
-    def contexts(self):
+    def contexts(self) -> dict:
         contexts = {}
         if self.subject is not None:
             contexts['subject'] = self.subject
