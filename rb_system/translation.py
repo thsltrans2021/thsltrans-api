@@ -1,12 +1,6 @@
-from rb_system.basic_sentence_rules import (
-    br1_transitive_sentence, br2_intransitive_sentence, br3_ditransitive_sentence,
-    br0_single_word, br4_locative_sentence
-)
-from rb_system.nlp_tools import (
-    perform_nlp_process, is_transitive_sentence, is_intransitive_sentence,
-    is_ditransitive_sentence, is_single_word, is_locative_sentence
-)
-from models.models import TextData, TSentence, Eng2Sign, SignGloss, ThSLClassifier, ThSLPrepositionPhrase, ThSLVerbPhrase
+from rb_system.basic_sentence_rules import *
+from rb_system.nlp_tools import *
+from models.models import *
 from typing import List, Optional, Union, Tuple
 from utils.iterator import powerset
 
@@ -51,7 +45,7 @@ def apply_rules(sentence: TSentence) -> List[str]:
     return sign_glosses
 
 
-def map_english_to_sign_gloss(words: List[Union[str, ThSLClassifier]]) -> List[str]:
+def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
     """
     Convert a list of english words to a list of sign glosses.
     Map english words to the ThSL database.
