@@ -58,11 +58,13 @@ def is_single_word(sentence: List[Token]) -> bool:
 
 def is_phrase(sentence: List[Token]) -> bool:
     """
-    True if the given sentence is not a sentence, but a phrase
+    True if the given sentence should be handled as a phrase
 
     >>> is_phrase(nlp('once upon a time')[:])
     True
     >>> is_phrase(nlp('slowly and surely')[:])
+    True
+    >>> is_phrase(nlp('work from home')[:])
     True
     >>> is_phrase(nlp('I walk to school')[:])
     False
@@ -77,14 +79,17 @@ def is_phrase(sentence: List[Token]) -> bool:
     has_indirect_obj = False
     for token in sentence:
         token: Token
-        if token.pos_ == POSLabel.U_VERB.value:
+        if token.pos_ == POSLabel.U_VERB.value or token.pos_ == POSLabel.U_AUXILIARY.value:
             has_verb = True
         if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
             has_subj = True
-        if token.dep_ == DependencyLabel.DATIVE.value:
+        elif token.dep_ == DependencyLabel.DATIVE.value:
             has_indirect_obj = True
 
+    # print(has_subj, has_verb, has_indirect_obj)
     if has_subj:
+        # if it has both S and V, it'll be considered as an intransitive sentence
+        # even though it isn't grammatically correct
         return not has_verb
     else:
         return not (has_indirect_obj and has_verb)
@@ -109,7 +114,7 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
     >>> is_transitive_sentence(nlp('He is sleeping.')[:])
     False
     """
-    if not _is_sentence(sentence):
+    if is_single_word(sentence):
         return False
     elif is_ditransitive_sentence(sentence):
         return False
@@ -146,13 +151,15 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
     False
     >>> is_ditransitive_sentence(nlp('Throw me the ball.')[:])
     True
+    >>> is_ditransitive_sentence(nlp('She eats')[:])
+    False
     """
     # My mother taught me how to cook. (still failed)
     has_direct_object = False
     has_dative = False
     dobj_count = 0
 
-    if not _is_sentence(sentence):
+    if len(sentence) < 3:
         return False
 
     for token in sentence:
@@ -172,6 +179,9 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
 
 def is_intransitive_sentence(sentence: List[Token]) -> bool:
     """
+    Note: "she eats" is considered as an intransitive sentence in this case
+    because we want to handle it as a sentence rather than a phrase.
+
     >>> is_intransitive_sentence(nlp('Hello')[:])
     False
     >>> is_intransitive_sentence(nlp('She eats an apple.')[:])
@@ -181,7 +191,7 @@ def is_intransitive_sentence(sentence: List[Token]) -> bool:
     >>> is_intransitive_sentence(nlp('The chickens walk.')[:])
     True
     """
-    if not _is_sentence(sentence):
+    if is_single_word(sentence):
         return False
     return not is_transitive_sentence(sentence) and not is_ditransitive_sentence(sentence)
 
@@ -206,7 +216,12 @@ def is_locative_sentence(sentence: List[Token]):
     True
     >>> is_locative_sentence(nlp('She works on Monday')[:])
     False
+    >>> is_locative_sentence(nlp('She gave some chocolates to him.')[:])
+    False
     """
+    if is_single_word(sentence):
+        return False
+
     prep_phrases = retrieve_preposition_phrases(sentence)
     prep_phrases_of_place = filter_preposition_of_place(prep_phrases)
     # print("prep phrase: ", prep_phrases)
@@ -247,9 +262,12 @@ def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]
             entity_label = EntityLabel(prep_p[1].ent_type_)
             if entity_label in entity_types:
                 continue
-            result_prep_phrases.append(prep_p)
         except ValueError:
-            result_prep_phrases.append(prep_p)
+            pass
+
+        if prep_p[1].pos_ == POSLabel.U_PRONOUN.value:
+            continue
+        result_prep_phrases.append(prep_p)
 
     return result_prep_phrases
 
