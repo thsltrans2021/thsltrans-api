@@ -166,7 +166,11 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
         dep_relation = token.dep_
         if dep_relation == DependencyLabel.ROOT.value:
             # John bought me a phone.
-            next_token: Token = token.nbor()
+            try:
+                next_token: Token = token.nbor()
+            except IndexError:
+                # no token after the ROOT token -> clearly no obj
+                return False
             if next_token.dep_ == DependencyLabel.DATIVE.value:
                 return True
         elif dep_relation == DependencyLabel.DATIVE.value:
