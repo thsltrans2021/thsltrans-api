@@ -21,6 +21,11 @@ def br0_single_word(sentence: TSentence) -> List[str]:
     return [token.lemma_ for token in sentence]
 
 
+def br0_phrase(sentence: TSentence) -> List[str]:
+    phrase = [' '.join(token.lemma_ for token in sentence)]
+    return phrase
+
+
 def br1_transitive_sentence(sentence: TSentence) -> List[str]:
     """
     Rearrange the input text according to the grammar rule #1 (p.80)
