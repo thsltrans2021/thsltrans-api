@@ -29,19 +29,23 @@ def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]
 
 def apply_rules(sentence: TSentence) -> List[str]:
     """Return a list of ThSL glosses"""
-    words = ['not supported']
+    thsl_words: List[Union[str, ThSLPhrase]]
     if is_single_word(sentence):
-        words = br0_single_word(sentence)
+        thsl_words = br0_single_word(sentence)
+    elif is_phrase(sentence):
+        thsl_words = br0_phrase(sentence)
     elif is_locative_sentence(sentence):
-        words = br4_locative_sentence(sentence)
+        thsl_words = br4_locative_sentence(sentence)
     elif is_transitive_sentence(sentence):
-        words = br1_transitive_sentence(sentence)
+        thsl_words = br1_transitive_sentence(sentence)
     elif is_intransitive_sentence(sentence):
-        words = br2_intransitive_sentence(sentence)
+        thsl_words = br2_intransitive_sentence(sentence)
     elif is_ditransitive_sentence(sentence):
-        words = br3_ditransitive_sentence(sentence)
+        thsl_words = br3_ditransitive_sentence(sentence)
+    else:
+        thsl_words = ['not supported']
 
-    sign_glosses = map_english_to_sign_gloss(words)
+    sign_glosses = map_english_to_sign_gloss(thsl_words)
     return sign_glosses
 
 
