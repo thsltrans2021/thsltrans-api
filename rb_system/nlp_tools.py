@@ -35,6 +35,61 @@ def perform_nlp_process(text_data: TextData):
         text_data.processed_data.append(processed_paragraph)
 
 
+def is_single_word(sentence: List[Token]) -> bool:
+    """
+    True if the given sentence contains one word.
+
+    >>> is_single_word(nlp('Home')[:])
+    True
+    >>> is_single_word(nlp('A baby')[:])
+    True
+    >>> is_single_word(nlp('Three babies')[:])
+    False
+    """
+    # print(f"sentence '{sentence}': {len(sentence)}")
+    determiners = ['a', 'the']
+    if len(sentence) == 1:
+        return True
+    if len(sentence) == 2:
+        if sentence[0].lemma_ in determiners:
+            return True
+    return False
+
+
+def is_phrase(sentence: List[Token]) -> bool:
+    """
+    True if the given sentence is not a sentence, but a phrase
+
+    >>> is_phrase(nlp('once upon a time')[:])
+    True
+    >>> is_phrase(nlp('slowly and surely')[:])
+    True
+    >>> is_phrase(nlp('I walk to school')[:])
+    False
+    >>> is_phrase(nlp('a baby')[:])
+    False
+    """
+    if is_single_word(sentence):
+        return False
+
+    has_subj = False
+    has_verb = False
+    has_indirect_obj = False
+    for token in sentence:
+        token: Token
+        if token.pos_ == POSLabel.U_VERB.value:
+            has_verb = True
+        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            has_subj = True
+        if token.dep_ == DependencyLabel.DATIVE.value:
+            has_indirect_obj = True
+
+    if has_subj:
+        return not has_verb
+    else:
+        return not (has_indirect_obj and has_verb)
+
+
 # TODO: refactor to use enum
 def is_transitive_sentence(sentence: List[Token]) -> bool:
     """
@@ -123,54 +178,6 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
             has_direct_object = True
             dobj_count += 1
     return has_direct_object and has_dative or dobj_count > 1
-
-
-def is_single_word(sentence: List[Token]) -> bool:
-    """
-    True if the given sentence contains one word.
-
-    >>> is_single_word(nlp('Home')[:])
-    True
-    >>> is_single_word(nlp('A baby')[:])
-    True
-    >>> is_single_word(nlp('Three babies')[:])
-    False
-    """
-    # print(f"sentence '{sentence}': {len(sentence)}")
-    determiners = ['a', 'the']
-    if len(sentence) == 1:
-        return True
-    if len(sentence) == 2:
-        if sentence[0].lemma_ in determiners:
-            return True
-    return False
-
-
-def is_phrase(sentence: List[Token]) -> bool:
-    """
-    True if the given sentence is not a sentence, but a phrase
-
-    >>> is_phrase(nlp('once upon a time')[:])
-    True
-    >>> is_phrase(nlp('slowly and surely')[:])
-    True
-    >>> is_phrase(nlp('I walk to school')[:])
-    False
-    >>> is_phrase(nlp('a baby')[:])
-    False
-    """
-    if is_single_word(sentence):
-        return False
-
-    has_subj = False
-    has_verb = False
-    for token in sentence:
-        token: Token
-        if token.pos_ == POSLabel.U_VERB.value:
-            has_verb = True
-        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
-            has_subj = True
-    return not has_subj or not has_verb
 
 
 def is_locative_sentence(sentence: List[Token]):
@@ -391,12 +398,13 @@ if __name__ == '__main__':
                     # except IndexError:
                     #     print(f'{token.text} has neighbor: {token.nbor()}')
             print()
-            # print(f'Is transitive sentence? {is_transitive_sentence(new_s)}')
-            # print(f'Is intransitive sentence? {is_intransitive_sentence(new_s)}')
-            # print(f'Is ditransitive sentence? {is_ditransitive_sentence(new_s)}')
-            # print(f'Is locative sentence? {is_locative_sentence(new_s)}')
             print(f'Is a single word? {is_single_word(new_s)}')
             print(f'Is a phrase? {is_phrase(new_s)}')
+            print(f'Is transitive sentence? {is_transitive_sentence(new_s)}')
+            print(f'Is intransitive sentence? {is_intransitive_sentence(new_s)}')
+            print(f'Is ditransitive sentence? {is_ditransitive_sentence(new_s)}')
+            print(f'Is locative sentence? {is_locative_sentence(new_s)}')
+
             print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
 
         print('\nEntities')
