@@ -90,6 +90,10 @@ def is_phrase(sentence: List[Token]) -> bool:
         return not (has_indirect_obj and has_verb)
 
 
+def _is_sentence(sentence: List[Token]) -> bool:
+    return not (is_single_word(sentence) or is_phrase(sentence))
+
+
 # TODO: refactor to use enum
 def is_transitive_sentence(sentence: List[Token]) -> bool:
     """
@@ -140,12 +144,11 @@ def is_intransitive_sentence(sentence: List[Token]) -> bool:
     >>> is_intransitive_sentence(nlp('The chickens walk.')[:])
     True
     """
-    if len(sentence) <= 1:
+    if not _is_sentence(sentence):
         return False
     return not is_transitive_sentence(sentence) and not is_ditransitive_sentence(sentence)
 
 
-# TODO: refactor to use enum
 def is_ditransitive_sentence(sentence: List[Token]) -> bool:
     """
     A sentence that has 2 objects (indirect obj followed by direct obj)
@@ -163,18 +166,20 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
     has_direct_object = False
     has_dative = False
     dobj_count = 0
-    if len(sentence) < 3:
+
+    if not _is_sentence(sentence):
         return False
+
     for token in sentence:
         dep_relation = token.dep_
-        if dep_relation == 'ROOT':
+        if dep_relation == DependencyLabel.ROOT.value:
             # John bought me a phone.
             next_token: Token = token.nbor()
-            if next_token.dep_ == 'dative':
+            if next_token.dep_ == DependencyLabel.DATIVE.value:
                 return True
-        elif dep_relation == 'dative':
+        elif dep_relation == DependencyLabel.DATIVE.value:
             has_dative = True
-        elif dep_relation == 'dobj':
+        elif dep_relation == DependencyLabel.DIRECT_OBJECT.value:
             has_direct_object = True
             dobj_count += 1
     return has_direct_object and has_dative or dobj_count > 1
