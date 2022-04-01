@@ -94,7 +94,6 @@ def _is_sentence(sentence: List[Token]) -> bool:
     return not (is_single_word(sentence) or is_phrase(sentence))
 
 
-# TODO: refactor to use enum
 def is_transitive_sentence(sentence: List[Token]) -> bool:
     """
     A sentence that has a direct object (dobj).
@@ -110,16 +109,18 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
     >>> is_transitive_sentence(nlp('He is sleeping.')[:])
     False
     """
-    if is_ditransitive_sentence(sentence):
+    if not _is_sentence(sentence):
+        return False
+    elif is_ditransitive_sentence(sentence):
         return False
 
     has_direct_object = False
     gerund_ancestors: List[Token] = []
     token: Token
     for token in sentence:
-        if token.dep_ == 'dobj':
+        if token.dep_ == DependencyLabel.DIRECT_OBJECT.value:
             has_direct_object = True
-        elif (token.tag_ == 'VBG') and (token.dep_ != 'ROOT'):
+        elif (token.tag_ == POSLabel.P_VERB_PRESENT_PARTICIPLE.value) and (token.dep_ != DependencyLabel.ROOT.value):
             gerund_ancestors = list(token.ancestors)
 
     if has_direct_object:
@@ -128,25 +129,9 @@ def is_transitive_sentence(sentence: List[Token]) -> bool:
         # check if verb is followed by gerund
         a: Token
         for a in gerund_ancestors:
-            if a.dep_ == 'ROOT':
+            if a.dep_ == DependencyLabel.ROOT.value:
                 return True
     return False
-
-
-def is_intransitive_sentence(sentence: List[Token]) -> bool:
-    """
-    >>> is_intransitive_sentence(nlp('Hello')[:])
-    False
-    >>> is_intransitive_sentence(nlp('She eats an apple.')[:])
-    False
-    >>> is_intransitive_sentence(nlp('The mouse asked.')[:])
-    True
-    >>> is_intransitive_sentence(nlp('The chickens walk.')[:])
-    True
-    """
-    if not _is_sentence(sentence):
-        return False
-    return not is_transitive_sentence(sentence) and not is_ditransitive_sentence(sentence)
 
 
 def is_ditransitive_sentence(sentence: List[Token]) -> bool:
@@ -183,6 +168,22 @@ def is_ditransitive_sentence(sentence: List[Token]) -> bool:
             has_direct_object = True
             dobj_count += 1
     return has_direct_object and has_dative or dobj_count > 1
+
+
+def is_intransitive_sentence(sentence: List[Token]) -> bool:
+    """
+    >>> is_intransitive_sentence(nlp('Hello')[:])
+    False
+    >>> is_intransitive_sentence(nlp('She eats an apple.')[:])
+    False
+    >>> is_intransitive_sentence(nlp('The mouse asked.')[:])
+    True
+    >>> is_intransitive_sentence(nlp('The chickens walk.')[:])
+    True
+    """
+    if not _is_sentence(sentence):
+        return False
+    return not is_transitive_sentence(sentence) and not is_ditransitive_sentence(sentence)
 
 
 def is_locative_sentence(sentence: List[Token]):
