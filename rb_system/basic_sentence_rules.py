@@ -41,7 +41,39 @@ def br1_transitive_sentence(sentence: TSentence) -> List[str]:
     Type 3:
         ST = (+)O (+|-)S (+)[S - V - O]
     """
-    return ['Rule 1', ' '.join([token.lemma_ for token in sentence])]
+    # ending_marker = 'nodding'
+    subject: TempToken = None
+    direct_object: TempToken = None
+    verb: TempToken = None
+    for idx, token in enumerate(sentence):
+        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            subject = token
+        elif token.dep_ == DependencyLabel.DIRECT_OBJECT.value:
+            direct_object = token
+        elif token.tag_ == POSLabel.P_VERB_PRESENT_PARTICIPLE.value:
+            # gerund is considered as obj
+            direct_object = token
+        elif token.pos_ == POSLabel.U_VERB.value:
+            # collect verb idx here
+            verb = token
+
+    assert subject is not None, '[b1] Sentence must contain subject'
+    assert verb is not None, '[b1] Sentence must contain verb'
+    assert direct_object is not None, '[b1] Sentence must contain direct object'
+
+    thsl_verb = ThSLVerbPhrase(verb=verb, subj_of_verb=subject, dobj_of_verb=direct_object)
+    if subject.pos_ == POSLabel.U_PRONOUN.value:
+        if direct_object.lemma_ == 'I':
+            # if it's the action toward "I" -> omit "me" and put "me" as a verb context
+            thsl_sentence = [subject.lemma_, thsl_verb]
+        else:
+            # Use SOV when S is pronoun
+            thsl_sentence = [subject.lemma_, direct_object.lemma_, thsl_verb]
+    else:
+        # Use SOV when S is pronoun, else use OSV
+        thsl_sentence = [direct_object.lemma_, subject.lemma_, thsl_verb]
+
+    return thsl_sentence
 
 
 def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
