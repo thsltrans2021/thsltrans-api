@@ -45,6 +45,9 @@ def apply_rules(sentence: TSentence) -> List[str]:
     else:
         thsl_words = ['not supported']
 
+    if is_wh_question(sentence):
+        thsl_words = cf3_question(sentence, thsl_words)
+
     sign_glosses = map_english_to_sign_gloss(thsl_words)
     return sign_glosses
 
@@ -69,6 +72,10 @@ def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
         elif isinstance(word, ThSLVerbPhrase):
             gloss = retrieve_sign_gloss_for_verb_with_context(word)
             thsl_glosses.append(gloss)
+        elif isinstance(word, ThSLNounPhrase):
+            # thsl_glosses.append(f'[not implemented] {word}')
+            glosses = retrieve_sign_gloss_for_noun_phrase(word)
+            thsl_glosses = thsl_glosses + glosses
         elif '-' in word:
             print("Ugly search!", word)
             thsl_glosses.append(f'[no map] {word}')
@@ -173,6 +180,53 @@ def retrieve_sign_gloss_for_noun(word) -> str:
     return f"no gloss of '{word}' is found in the dictionary"
 
 
+def retrieve_sign_gloss_for_noun_phrase(noun_phrase: ThSLNounPhrase) -> List[str]:
+    """
+    a young mouse
+    a young and beautiful girl
+    """
+    noun = noun_phrase.noun
+    candidate_words = Eng2Sign.objects(english=noun.lemma_)
+    assert len(candidate_words) <= 1, f'[n_with_ctx] duplicated `english` key: {noun.lemma_}'
+
+    if len(candidate_words) == 0:
+        message = f"Noun '{noun.lemma_}' is not found in the dictionary"
+        logging.info(message)
+        return [message]
+
+    result: List[SignGloss] = []
+
+    # select sign gloss that has the matched POS
+    noun_glosses = candidate_words[0].sign_glosses
+    for ng in noun_glosses:
+        ng: SignGloss
+        if len(noun_glosses) == 1 and ng.lang == 'en':
+            result.append(ng)
+            break
+        elif ng.pos == 'noun' and ng.lang == 'en':
+            result.append(ng)
+            break
+
+    # select sign gloss that has the matched POS
+    noun_adj_lst = noun_phrase.adj_list
+    unmatched_adj = []
+    for adj in noun_adj_lst:
+        adj_words = Eng2Sign.objects(english=adj.lemma_)
+        assert len(adj_words) <= 1, f'[n_with_ctx] duplicated `english` key: {adj.lemma_}'
+        if len(adj_words) == 0:
+            unmatched_adj.append(adj)
+            continue
+        for adj_g in adj_words[0].sign_glosses:
+            adj_g: SignGloss
+            if adj_g.pos == 'adjective' and adj_g.lang == 'en':
+                result.append(adj_g)
+                break
+
+    result_glosses = [g.gloss for g in result]
+    return result_glosses + [f'not found {u.lemma_}' for u in unmatched_adj]
+
+
+# TODO: consider modifier of noun as well e.g. mice, several mice
 def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
     """
     he-walk -> person-walk
@@ -191,13 +245,22 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
 
     verb_contexts = verb_phrase.contexts
     # print("attr --> ", verb_contexts)
+    additional_ctx: List[set] = []
 
-    unwanted_pos = ["verb", "classifier", "preposition"]
+    unwanted_pos = ['verb', 'classifier', 'preposition']
     context_glosses: List[Tuple[int, SignGloss]] = []
     related_words = []
     related_words_idx = 0
-    for context in verb_contexts.values():
-        result_ctx = _retrieve_word(context.lemma_)
+    for ctx_key, ctx_val in verb_contexts.items():
+        ctx_val: Token
+        # consider additional context e.g. subject is plural
+        if ctx_val.tag_ == POSLabel.P_PLURAL_NOUN.value:
+            if ctx_key == 'subject':
+                additional_ctx.append({'multiple subjects'})
+            elif ctx_key == 'direct_obj' or ctx_key == 'indirect_obj':
+                additional_ctx.append({'multiple objects'})
+
+        result_ctx = _retrieve_word(ctx_val.lemma_)
         if result_ctx is None:
             continue
 
@@ -205,7 +268,7 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
         for gloss in result_ctx.sign_glosses:
             if gloss.pos in unwanted_pos:
                 continue
-            elif gloss.lang == "en":
+            elif gloss.lang == 'en':
                 ctx_glosses.append(gloss)
 
         if len(ctx_glosses) > 0:
@@ -218,20 +281,24 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
         gloss: SignGloss
         for gloss in candidate_words[0].sign_glosses:
             try:
-                if gloss.priority >= 1 and gloss.lang == "en":
+                if gloss.priority >= 1 and gloss.lang == 'en':
                     return gloss.gloss
             # no priority field -> return whatever
             except TypeError:
-                if gloss.lang == "en":
+                if gloss.lang == 'en':
                     return gloss.gloss
 
     # append all gloss' ctx of all words related to verb (sub, iobj, dobj, etc.)
-    ctx_combinations = []
+    ctx_combinations: List[set] = []
     for word_idx, ctx_gloss in context_glosses:
         ctx_gloss: SignGloss
         all_contexts = ctx_gloss.contexts + related_words[word_idx].contexts
         combinations = _get_context_combinations(all_contexts)
         ctx_combinations = ctx_combinations + combinations
+
+    # concat with additional contexts
+    ctx_combinations = ctx_combinations + additional_ctx
+    print('ctx com: ', ctx_combinations)
 
     possible_matches = _count_possible_matches(candidate_words[0], ctx_combinations)
     assert len(possible_matches) > 0, \
@@ -253,9 +320,13 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
                 print(result.gloss, result.priority)
                 max_priority = result.priority
                 final_result = result
+        if final_result is None:
+            logging.info(f'[v_with_ctx] No final result for {results}, choose the first result')
+            final_result = results[0][0]
     else:
         final_result = results[0][0]
 
+    assert final_result is not None, f'[v_with_ctx] unexpectedly no final result for {results}'
     return final_result.gloss
 
 
