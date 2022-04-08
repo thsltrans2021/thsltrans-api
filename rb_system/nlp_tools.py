@@ -233,6 +233,19 @@ def is_locative_sentence(sentence: List[Token]):
     return len(prep_phrases_of_place) > 0
 
 
+def is_wh_question(sentence: List[Token]) -> bool:
+    if not _is_sentence(sentence):
+        return False
+
+    first_token = sentence[0]
+    if first_token.tag_ == POSLabel.P_WH_ADVERB.value:
+        return True
+    elif first_token.tag_ == POSLabel.P_WH_PRONOUN.value:
+        return True
+
+    return False
+
+
 def retrieve_preposition_phrases(sentence: List[Token]) -> List[Tuple[Token, Token, int, int]]:
     """
     Finds preposition phrases from the sentence and return them
@@ -310,6 +323,11 @@ def retrieve_entities(sentence: List[Token], entity_types: List[EntityLabel]) ->
             continue
 
     return entities
+
+
+def retrieve_noun_phrases(sentence: List[Token]) -> List[str]:
+    s_doc = nlp(" ".join([t.text for t in sentence]))
+    return [np for np in s_doc.noun_chunks]
 
 
 def _merge_token_by_entity(sentence: List[Token]) -> List[Token]:
@@ -393,6 +411,19 @@ def remove_unnecessary_tokens(sentence: List[Token]) -> List[Token]:
     return result
 
 
+def noun_phrase_to_adjectives(noun_phrase: Span) -> List[Token]:
+    adjectives = []
+    for idx, t in enumerate(noun_phrase):
+        t: Token
+        if idx == len(noun_phrase) - 1:
+            break
+        elif t.pos_ == POSLabel.U_DETERMINER.value:
+            continue
+        else:
+            adjectives.append(t)
+    return adjectives
+
+
 if __name__ == '__main__':
     """
     Please run the following command if it's the first time you run this module.
@@ -426,6 +457,7 @@ if __name__ == '__main__':
                     # except IndexError:
                     #     print(f'{token.text} has neighbor: {token.nbor()}')
             print()
+            print(f'Is a question? {is_wh_question(new_s)}')
             print(f'Is a single word? {is_single_word(new_s)}')
             print(f'Is a phrase? {is_phrase(new_s)}')
             print(f'Is transitive sentence? {is_transitive_sentence(new_s)}')
@@ -434,6 +466,10 @@ if __name__ == '__main__':
             print(f'Is locative sentence? {is_locative_sentence(new_s)}')
 
             print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
+
+            new_np = retrieve_noun_phrases(new_s)
+            print(f'[2] Noun phrase: {new_np}')
+            # print(f'[3] NP types: {[[type(n) for n in np] for np in new_np]}')
 
         print('\nEntities')
         for ent in doc.ents:

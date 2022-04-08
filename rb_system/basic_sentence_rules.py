@@ -1,7 +1,7 @@
 from typing import List, Union
-from models.models import TSentence, ThSLClassifier, ThSLPhrase, ThSLPrepositionPhrase, ThSLVerbPhrase
+from models.models import *
 from spacy.tokens import Token, Span
-from rb_system.nlp_tools import retrieve_preposition_phrases, filter_preposition_of_place
+from rb_system.nlp_tools import *
 from rb_system.types import DependencyLabel, POSLabel, EntityLabel
 
 """
@@ -26,7 +26,7 @@ def br0_phrase(sentence: TSentence) -> List[str]:
     return phrase
 
 
-def br1_transitive_sentence(sentence: TSentence) -> List[str]:
+def br1_transitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #1 (p.80)
     of a basic sentence.
@@ -61,17 +61,29 @@ def br1_transitive_sentence(sentence: TSentence) -> List[str]:
     assert verb is not None, '[b1] Sentence must contain verb'
     assert direct_object is not None, '[b1] Sentence must contain direct object'
 
+    thsl_subject = ThSLNounPhrase(noun=subject)
+    thsl_dobj = ThSLNounPhrase(noun=direct_object)
+    noun_phrases = retrieve_noun_phrases(sentence)
+    for np in noun_phrases:
+        np: Span
+        if subject.text in str(np):
+            adj_lst = noun_phrase_to_adjectives(np)
+            thsl_subject.add_adjectives(adj_lst)
+        elif direct_object.text in str(np):
+            adj_lst = noun_phrase_to_adjectives(np)
+            thsl_dobj.add_adjectives(adj_lst)
+
     thsl_verb = ThSLVerbPhrase(verb=verb, subj_of_verb=subject, dobj_of_verb=direct_object)
-    if subject.pos_ == POSLabel.U_PRONOUN.value:
-        if direct_object.lemma_ == 'I':
+    if thsl_subject.noun.lemma_ == POSLabel.U_PRONOUN.value:
+        if thsl_dobj.noun.lemma_ == 'I':
             # if it's the action toward "I" -> omit "me" and put "me" as a verb context
-            thsl_sentence = [subject.lemma_, thsl_verb]
+            thsl_sentence = [thsl_subject, thsl_verb]
         else:
             # Use SOV when S is pronoun
-            thsl_sentence = [subject.lemma_, direct_object.lemma_, thsl_verb]
+            thsl_sentence = [thsl_subject, thsl_dobj, thsl_verb]
     else:
         # Use SOV when S is pronoun, else use OSV
-        thsl_sentence = [direct_object.lemma_, subject.lemma_, thsl_verb]
+        thsl_sentence = [thsl_dobj, thsl_subject, thsl_verb]
 
     return thsl_sentence
 
@@ -198,6 +210,17 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
         thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
 
     return thsl_sentence
+
+
+# TODO: append WH at the end of the translated sentence
+def cf3_question(ori_sentence: TSentence, trans_sentence: List[Union[str, ThSLPhrase]]):
+    """
+    pg.111
+    """
+    wh: str = ori_sentence[0].lemma_
+    trans_sentence.append(wh.upper())
+    print("==>", trans_sentence)
+    return trans_sentence.append(wh.upper())
 
 # TODO: define the rules for all types of sentence
 # I got the kids their favorite toys.
