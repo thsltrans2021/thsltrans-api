@@ -223,6 +223,33 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     return thsl_sentence
 
 
+def br13_stative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
+    """
+    pg. 93-94
+    """
+    subject: TempToken = None
+    adj_complement: TempToken = None
+    for token in sentence:
+        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            subject = token
+        elif token.dep_ == DependencyLabel.ADJECTIVAL_COMPLEMENT.value:
+            adj_complement = token
+
+    assert subject is not None, '[br13] Sentence must contain subject'
+    assert adj_complement is not None, '[br13] Sentence must contain adjectival complement'
+
+    thsl_subject = ThSLNounPhrase(noun=subject)
+    noun_phrases = retrieve_noun_phrases(sentence)
+    for np in noun_phrases:
+        np: Span
+        if subject.text in str(np):
+            adj_lst = noun_phrase_to_adjectives(np)
+            thsl_subject.add_adjectives(adj_lst)
+
+    thsl_sentence = [thsl_subject, adj_complement.lemma_]
+    return thsl_sentence
+
+
 # TODO: append WH at the end of the translated sentence
 def cf3_question(ori_sentence: TSentence, trans_sentence: List[Union[str, ThSLPhrase]]):
     """

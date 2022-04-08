@@ -246,6 +246,34 @@ def is_wh_question(sentence: List[Token]) -> bool:
     return False
 
 
+def _has_stative_verb(sentence: List[Token]) -> bool:
+    """
+    True if the sentence has v.to be e.g. The shirt is blue
+    """
+    for token in sentence:
+        if token.pos_ == POSLabel.U_AUXILIARY.value:
+            return True
+    return False
+
+
+def is_stative_sentence(sentence: List[Token]) -> bool:
+    return _has_stative_verb(sentence)
+
+
+def is_complex_sentence(sentence: List[Token]):
+    """
+    True of the sentence has conjunction e.g. and, that, because
+    """
+    for token in sentence:
+        if token.tag_ == POSLabel.P_WH_DETERMINER.value:
+            return True
+        elif token.pos_ == POSLabel.U_COORDINATING_CONJUNCTION.value:
+            return True
+        elif token.pos_ == POSLabel.U_SUBORDINATING_CONJUNCTION.value:
+            return True
+    return False
+
+
 def retrieve_preposition_phrases(sentence: List[Token]) -> List[Tuple[Token, Token, int, int]]:
     """
     Finds preposition phrases from the sentence and return them
@@ -382,6 +410,45 @@ def _merge_token_by_entity(sentence: List[Token]) -> List[Token]:
     return new_sentence
 
 
+def filter_relative_clause(sentence: List[Token]) -> Tuple[List[Token], int, int]:
+    """
+    >>> filter_relative_clause(nlp('The cat that attacks us is scary.')[:])
+    ([that, attacks, us], 2, 4)
+    >>> filter_relative_clause(nlp('I like the person who was nice to me.')[:])
+    ([who, was, nice, to, me], 4, 8)
+    >>> filter_relative_clause(nlp('I hate the dog that bit me.')[:])
+    ([that, bit, me], 4, 6)
+    >>> filter_relative_clause(nlp('I like the bike that my father gave me.')[:])
+    ([that, my, father, gave, me], 4, 8)
+    """
+    relative_clause: List[Token] = []
+    start_idx = len(sentence)
+    end_idx = 0
+    for idx, token in enumerate(sentence):
+        if token.is_punct:
+            continue
+
+        # handle relative clause of subject
+        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            if token.tag_ == POSLabel.P_WH_DETERMINER.value:
+                start_idx = idx
+            elif token.tag_ == POSLabel.P_WH_PRONOUN.value:
+                start_idx = idx
+        # handle relative clause of object
+        elif token.dep_ == DependencyLabel.DATIVE.value:
+            if token.tag_ == POSLabel.P_WH_DETERMINER.value:
+                start_idx = idx
+        elif token.dep_ == DependencyLabel.ROOT.value:
+            if idx > start_idx:
+                break
+
+        if idx >= start_idx:
+            relative_clause.append(token)
+            end_idx = idx
+
+    return relative_clause, start_idx, end_idx
+
+
 def remove_punctuations(sentence: List[Token]) -> List[Token]:
     """
     Remove punctuations (e.g. '.', '?') from the given sentence.
@@ -460,6 +527,8 @@ if __name__ == '__main__':
             print(f'Is a question? {is_wh_question(new_s)}')
             print(f'Is a single word? {is_single_word(new_s)}')
             print(f'Is a phrase? {is_phrase(new_s)}')
+            print(f'Is a complex sentence? {is_complex_sentence(new_s)}')
+            print(f'filter relative clause: {filter_relative_clause(new_s)}')
             print(f'Is transitive sentence? {is_transitive_sentence(new_s)}')
             print(f'Is intransitive sentence? {is_intransitive_sentence(new_s)}')
             print(f'Is ditransitive sentence? {is_ditransitive_sentence(new_s)}')

@@ -30,14 +30,55 @@ def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]
 def apply_rules(sentence: TSentence) -> List[str]:
     """Return a list of ThSL glosses"""
     # TODO: handle complex sentence here
-    # if is_complex_sentence:
-    thsl_words = rearrange_basic_sentence(sentence)
+    if is_complex_sentence(sentence):
+        relative_clause_data = filter_relative_clause(sentence)
+        if len(relative_clause_data[0]) > 0:
+            thsl_words = apply_rule_to_sentence_with_relative_clause(sentence, relative_clause_data)
+        else:
+            logging.info(f'Not supported complex sentence: {sentence}')
+            thsl_words = rearrange_basic_sentence(sentence)
+    else:
+        thsl_words = rearrange_basic_sentence(sentence)
 
     if is_wh_question(sentence):
         thsl_words = cf3_question(sentence, thsl_words)
 
     sign_glosses = map_english_to_sign_gloss(thsl_words)
     return sign_glosses
+
+
+def apply_rule_to_sentence_with_relative_clause(sentence: List[Token], relcl_data: Tuple[List[Token], int, int]) -> List[Union[str, ThSLPhrase]]:
+    # translate relative clause
+    relcl, relcl_start_idx, relcl_end_idx = relcl_data
+    relcl_subject: Optional[Token] = None
+    for idx, token in enumerate(sentence):
+        if idx + 1 == relcl_start_idx:
+            relcl_subject = token
+
+    assert relcl_subject is not None, f'[relcl_rule] Cannot find the real subject of relative clause {relcl}'
+    relcl.pop(0)
+    relcl.insert(0, relcl_subject)
+    thsl_relcl = rearrange_basic_sentence(relcl)
+    # print(f'--> {relcl=}\n--> {thsl_relcl=}')
+
+    root_sentence = sentence[0:relcl_start_idx] + sentence[relcl_end_idx+1:len(sentence)]
+    thsl_root_sentence = rearrange_basic_sentence(root_sentence)
+    # print(f'--> {root_sentence=}\n--> {thsl_root_sentence=}')
+
+    start_idx: Optional[int] = None
+    duplicated_subj_idx: Optional[int] = None
+    for idx, root_t in enumerate(thsl_root_sentence):
+        for relcl_idx, relcl_t in enumerate(thsl_relcl):
+            if root_t == relcl_t:
+                start_idx = idx
+                duplicated_subj_idx = relcl_idx
+    assert start_idx is not None, f'[relcl_rule] Unexpectedly no matched subject'
+
+    # remove subject that is duplicated with the root sentence
+    thsl_relcl.remove(thsl_relcl[duplicated_subj_idx])
+    thsl_sentence = thsl_root_sentence[0:start_idx+1] + thsl_relcl + thsl_root_sentence[start_idx+1:len(thsl_root_sentence)]
+    # print(f'--> {thsl_sentence=}')
+    return thsl_sentence
 
 
 def rearrange_basic_sentence(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
@@ -47,6 +88,8 @@ def rearrange_basic_sentence(sentence: List[Token]) -> List[Union[str, ThSLPhras
         result = br0_phrase(sentence)
     elif is_locative_sentence(sentence):
         result = br4_locative_sentence(sentence)
+    elif is_stative_sentence(sentence):
+        result = br13_stative_sentence(sentence)
     elif is_transitive_sentence(sentence):
         result = br1_transitive_sentence(sentence)
     elif is_intransitive_sentence(sentence):
@@ -81,9 +124,7 @@ def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
         elif isinstance(word, ThSLNounPhrase):
             # thsl_glosses.append(f'[not implemented] {word}')
             glosses = retrieve_sign_gloss_for_noun_phrase(word)
-            print('[b] thsl_glosses -->', thsl_glosses)
             thsl_glosses = thsl_glosses + glosses
-            print('[a] thsl_glosses -->', thsl_glosses)
         elif '-' in word:
             print("Ugly search!", word)
             thsl_glosses.append(f'[no map] {word}')
@@ -237,7 +278,6 @@ def retrieve_sign_gloss_for_noun_phrase(noun_phrase: ThSLNounPhrase) -> List[str
     return result_glosses + [f'not found {u.lemma_}' for u in unmatched_adj]
 
 
-# TODO: consider modifier of noun as well e.g. mice, several mice
 def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
     """
     he-walk -> person-walk
