@@ -175,7 +175,6 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     return thsl_sentence
 
 
-# TODO: use ThSLNounPhrase
 def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #4 (p.83)
@@ -206,19 +205,30 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
             set_scene = True
             prep = token
 
-    assert subject is not None, '[b4] Sentence must contain subject'
+    assert subject is not None, '[br4] Sentence must contain subject'
+    assert root is not None, '[br4] Sentence must contain verb'
 
-    thsl_sentence: List[Union[str, ThSLClassifier]]
+    thsl_verb = ThSLVerbPhrase(verb=root, subj_of_verb=subject, iobj_of_verb=location)
+    thsl_location = ThSLNounPhrase(noun=location)
+    thsl_subject = ThSLNounPhrase(noun=subject)
+    noun_phrases = retrieve_noun_phrases(sentence)
+    for np in noun_phrases:
+        np: Span
+        if subject.text in str(np):
+            adj_lst = noun_phrase_to_adjectives(np)
+            thsl_subject.add_adjectives(adj_lst)
+
+    thsl_sentence: List[Union[str, ThSLPhrase]]
     if set_scene:
         location_classifier = ThSLClassifier(location)
         subject_classifier = ThSLClassifier(subject)
         thsl_sentence = [
-            location.lemma_, location_classifier,
-            subject.lemma_, subject_classifier,
+            thsl_location, location_classifier,
+            thsl_subject, subject_classifier,
             ThSLPrepositionPhrase(prep, subject_classifier, location_classifier),
         ]
     else:
-        thsl_sentence = [location.lemma_, subject.lemma_, root.lemma_]
+        thsl_sentence = [thsl_location, thsl_subject, thsl_verb]
 
     return thsl_sentence
 

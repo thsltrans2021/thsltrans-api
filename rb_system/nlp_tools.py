@@ -228,8 +228,8 @@ def is_locative_sentence(sentence: List[Token]):
 
     prep_phrases = retrieve_preposition_phrases(sentence)
     prep_phrases_of_place = filter_preposition_of_place(prep_phrases)
-    # print("prep phrase: ", prep_phrases)
-    # print("prep of place", prep_phrases_of_place)
+    print("prep phrase: ", prep_phrases)
+    print("prep of place", prep_phrases_of_place)
     return len(prep_phrases_of_place) > 0
 
 
@@ -293,7 +293,7 @@ def retrieve_preposition_phrases(sentence: List[Token]) -> List[Tuple[Token, Tok
     return prep_phrases
 
 
-def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]]):
+def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]]) -> List[Tuple[Token, Token, int, int]]:
     """
     Returns a list of preposition phrases that are not considered as prepositional phrase of time.
     """
@@ -308,6 +308,7 @@ def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]
             if entity_label in entity_types:
                 continue
         except ValueError:
+            # continue      # detect only what Spacy model can
             pass
 
         if prep_p[1].pos_ == POSLabel.U_PRONOUN.value:

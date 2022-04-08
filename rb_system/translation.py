@@ -84,18 +84,25 @@ def apply_rule_to_sentence_with_relative_clause(sentence: List[Token], relcl_dat
 def rearrange_basic_sentence(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
     if is_single_word(sentence):
         result = br0_single_word(sentence)
+        logging.debug(f'[br0 s] {result=}')
     elif is_phrase(sentence):
         result = br0_phrase(sentence)
+        logging.debug(f'[br0 p] {result=}')
     elif is_locative_sentence(sentence):
         result = br4_locative_sentence(sentence)
+        logging.debug(f'[br4] {result=}')
     elif is_stative_sentence(sentence):
         result = br13_stative_sentence(sentence)
+        logging.debug(f'[br13] {result=}')
     elif is_transitive_sentence(sentence):
         result = br1_transitive_sentence(sentence)
+        logging.debug(f'[br1] {result=}')
     elif is_intransitive_sentence(sentence):
         result = br2_intransitive_sentence(sentence)
+        logging.debug(f'[br2] {result=}')
     elif is_ditransitive_sentence(sentence):
         result = br3_ditransitive_sentence(sentence)
+        logging.debug(f'[br3] {result=}')
     else:
         result = ['not supported']
     return result
