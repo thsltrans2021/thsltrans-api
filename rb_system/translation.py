@@ -37,11 +37,10 @@ def apply_rules(sentence: TSentence) -> List[str]:
         else:
             logging.info(f'Not supported complex sentence: {sentence}')
             thsl_words = rearrange_basic_sentence(sentence)
+    elif is_wh_question(sentence):
+        thsl_words = apply_rule_to_wh_question(sentence)
     else:
         thsl_words = rearrange_basic_sentence(sentence)
-
-    if is_wh_question(sentence):
-        thsl_words = cf3_question(sentence, thsl_words)
 
     sign_glosses = map_english_to_sign_gloss(thsl_words)
     return sign_glosses
@@ -81,10 +80,19 @@ def apply_rule_to_sentence_with_relative_clause(sentence: List[Token], relcl_dat
     return thsl_sentence
 
 
+def apply_rule_to_wh_question(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
+    wh: Token = sentence.pop(0)
+    sentence.pop(0)     # pop v.to do or v.to be
+    thsl_root_sentence = rearrange_basic_sentence(sentence)
+    print(f'--> {thsl_root_sentence=}')
+    thsl_sentence = thsl_root_sentence + [wh.lemma_]
+    return thsl_sentence
+
+
 def rearrange_basic_sentence(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
     if is_single_word(sentence):
         result = br0_single_word(sentence)
-        logging.debug(f'[br0 s] {result=}')
+        logging.debug(f'[br0 w] {result=}')
     elif is_phrase(sentence):
         result = br0_phrase(sentence)
         logging.debug(f'[br0 p] {result=}')

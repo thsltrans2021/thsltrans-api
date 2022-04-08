@@ -16,6 +16,16 @@ Symbols from the ThSL research
 TempToken = Union[Token, None]
 TempSpan = Union[Span, None]
 
+PRONOUNS = {
+    'we': ['us', 'ourselves', 'our'],
+    'they': ['them', 'themselves', 'their'],
+    'you': ['you', 'yourself', 'yours'],
+    'I': ['me', 'myself', 'mine'],
+    'he': ['him', 'himself', 'his'],
+    'she': ['her', 'herself', 'her'],
+    'it': ['it', 'itself', 'its']
+}
+
 
 def br0_single_word(sentence: TSentence) -> List[str]:
     return [token.lemma_ for token in sentence]
@@ -74,13 +84,19 @@ def br1_transitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]
             thsl_dobj.add_adjectives(adj_lst)
 
     thsl_verb = ThSLVerbPhrase(verb=verb, subj_of_verb=subject, dobj_of_verb=direct_object)
-    if thsl_subject.noun.lemma_ == POSLabel.U_PRONOUN.value:
+    if thsl_subject.noun.pos_ == POSLabel.U_PRONOUN.value:
         if thsl_dobj.noun.lemma_ == 'I':
             # if it's the action toward "I" -> omit "me" and put "me" as a verb context
+            thsl_sentence = [thsl_subject, thsl_verb]
+        elif thsl_dobj.noun.lemma_ in PRONOUNS[thsl_subject.noun.lemma_]:
+            # e.g. we protect ourselves -> PROTECT-ourselves
             thsl_sentence = [thsl_subject, thsl_verb]
         else:
             # Use SOV when S is pronoun
             thsl_sentence = [thsl_subject, thsl_dobj, thsl_verb]
+    # belling the cat hard code TODO: should handle verb that doesn't need obj in ThSL
+    elif thsl_verb.verb.lemma_ == 'have' and thsl_dobj.noun.lemma_ == 'meeting':
+        thsl_sentence = [thsl_subject, thsl_verb]
     else:
         # Use SOV when S is pronoun, else use OSV
         thsl_sentence = [thsl_dobj, thsl_subject, thsl_verb]
