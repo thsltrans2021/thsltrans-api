@@ -29,27 +29,33 @@ def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]
 
 def apply_rules(sentence: TSentence) -> List[str]:
     """Return a list of ThSL glosses"""
-    thsl_words: List[Union[str, ThSLPhrase]]
-    if is_single_word(sentence):
-        thsl_words = br0_single_word(sentence)
-    elif is_phrase(sentence):
-        thsl_words = br0_phrase(sentence)
-    elif is_locative_sentence(sentence):
-        thsl_words = br4_locative_sentence(sentence)
-    elif is_transitive_sentence(sentence):
-        thsl_words = br1_transitive_sentence(sentence)
-    elif is_intransitive_sentence(sentence):
-        thsl_words = br2_intransitive_sentence(sentence)
-    elif is_ditransitive_sentence(sentence):
-        thsl_words = br3_ditransitive_sentence(sentence)
-    else:
-        thsl_words = ['not supported']
+    # TODO: handle complex sentence here
+    # if is_complex_sentence:
+    thsl_words = rearrange_basic_sentence(sentence)
 
     if is_wh_question(sentence):
         thsl_words = cf3_question(sentence, thsl_words)
 
     sign_glosses = map_english_to_sign_gloss(thsl_words)
     return sign_glosses
+
+
+def rearrange_basic_sentence(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
+    if is_single_word(sentence):
+        result = br0_single_word(sentence)
+    elif is_phrase(sentence):
+        result = br0_phrase(sentence)
+    elif is_locative_sentence(sentence):
+        result = br4_locative_sentence(sentence)
+    elif is_transitive_sentence(sentence):
+        result = br1_transitive_sentence(sentence)
+    elif is_intransitive_sentence(sentence):
+        result = br2_intransitive_sentence(sentence)
+    elif is_ditransitive_sentence(sentence):
+        result = br3_ditransitive_sentence(sentence)
+    else:
+        result = ['not supported']
+    return result
 
 
 def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
@@ -75,13 +81,16 @@ def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
         elif isinstance(word, ThSLNounPhrase):
             # thsl_glosses.append(f'[not implemented] {word}')
             glosses = retrieve_sign_gloss_for_noun_phrase(word)
+            print('[b] thsl_glosses -->', thsl_glosses)
             thsl_glosses = thsl_glosses + glosses
+            print('[a] thsl_glosses -->', thsl_glosses)
         elif '-' in word:
             print("Ugly search!", word)
             thsl_glosses.append(f'[no map] {word}')
         else:
             gloss = retrieve_sign_gloss_for_noun(word)
             thsl_glosses.append(gloss)
+    print('result -->', thsl_glosses)
     return thsl_glosses
 
 
@@ -200,10 +209,12 @@ def retrieve_sign_gloss_for_noun_phrase(noun_phrase: ThSLNounPhrase) -> List[str
     noun_glosses = candidate_words[0].sign_glosses
     for ng in noun_glosses:
         ng: SignGloss
-        if len(noun_glosses) == 1 and ng.lang == 'en':
+        if ng.lang != 'en':
+            continue
+        if len(noun_glosses) == 1:
             result.append(ng)
             break
-        elif ng.pos == 'noun' and ng.lang == 'en':
+        elif ng.pos == 'noun' or ng.pos == 'pronoun':
             result.append(ng)
             break
 
