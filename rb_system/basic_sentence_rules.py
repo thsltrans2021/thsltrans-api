@@ -106,11 +106,21 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
             continue
     assert subject is not None, '[b2] Sentence must contain subject'
     assert root is not None, '[b2] Sentence must contain verb'
-    verb = ThSLVerbPhrase(verb=root, subj_of_verb=subject)
-    thsl_sentence = [subject.lemma_, verb]
+
+    thsl_subject = ThSLNounPhrase(noun=subject)
+    noun_phrases = retrieve_noun_phrases(sentence)
+    for np in noun_phrases:
+        np: Span
+        if subject.text in str(np):
+            adj_lst = noun_phrase_to_adjectives(np)
+            thsl_subject.add_adjectives(adj_lst)
+
+    thsl_verb = ThSLVerbPhrase(verb=root, subj_of_verb=subject)
+    thsl_sentence = [thsl_subject, thsl_verb]
     return thsl_sentence
 
 
+# TODO: use ThSLNounPhrase
 def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #3 (p.81)
@@ -165,6 +175,7 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     return thsl_sentence
 
 
+# TODO: use ThSLNounPhrase
 def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     Rearrange the input text according to the grammar rule #4 (p.83)
