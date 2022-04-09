@@ -28,11 +28,11 @@ PRONOUNS = {
 
 
 def br0_single_word(sentence: TSentence) -> List[str]:
-    return [token.lemma_ for token in sentence]
+    return [tk.lemma_ for tk in sentence]
 
 
 def br0_phrase(sentence: TSentence) -> List[str]:
-    phrase = [' '.join(token.lemma_ for token in sentence)]
+    phrase = [' '.join(tk.lemma_ for tk in sentence)]
     return phrase
 
 
@@ -55,21 +55,22 @@ def br1_transitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]
     subject: TempToken = None
     direct_object: TempToken = None
     verb: TempToken = None
-    for idx, token in enumerate(sentence):
-        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
-            subject = token
-        elif token.dep_ == DependencyLabel.DIRECT_OBJECT.value:
-            direct_object = token
-        elif token.tag_ == POSLabel.P_VERB_PRESENT_PARTICIPLE.value:
+    for idx, tk in enumerate(sentence):
+        tk: Token
+        if tk.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            subject = tk
+        elif tk.dep_ == DependencyLabel.DIRECT_OBJECT.value:
+            direct_object = tk
+        elif tk.tag_ == POSLabel.P_VERB_PRESENT_PARTICIPLE.value:
             # gerund is considered as obj
-            direct_object = token
-        elif token.pos_ == POSLabel.U_VERB.value:
+            direct_object = tk
+        elif tk.pos_ == POSLabel.U_VERB.value:
             # collect verb idx here
-            verb = token
+            verb = tk
 
-    assert subject is not None, '[b1] Sentence must contain subject'
-    assert verb is not None, '[b1] Sentence must contain verb'
-    assert direct_object is not None, '[b1] Sentence must contain direct object'
+    assert subject is not None, '[br1] Sentence must contain subject'
+    assert verb is not None, '[br1] Sentence must contain verb'
+    assert direct_object is not None, '[br1] Sentence must contain direct object'
 
     thsl_subject = ThSLNounPhrase(noun=subject)
     thsl_dobj = ThSLNounPhrase(noun=direct_object)
@@ -113,15 +114,16 @@ def br2_intransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     """
     subject: TempToken = None
     root: TempToken = None
-    for idx, token in enumerate(sentence):
+    for idx, tk in enumerate(sentence):
+        tk: Token
         try:
-            if idx > 0 and token.dep_ == DependencyLabel.ROOT.value:
-                subject = token.nbor(-1)
-                root = token
+            if idx > 0 and tk.dep_ == DependencyLabel.ROOT.value:
+                subject = tk.nbor(-1)
+                root = tk
         except IndexError:
             continue
-    assert subject is not None, '[b2] Sentence must contain subject'
-    assert root is not None, '[b2] Sentence must contain verb'
+    assert subject is not None, '[br2] Sentence must contain subject'
+    assert root is not None, '[br2] Sentence must contain verb'
 
     thsl_subject = ThSLNounPhrase(noun=subject)
     noun_phrases = retrieve_noun_phrases(sentence)
@@ -159,17 +161,18 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     root: TempToken = None
     quantity: TempToken = None
 
-    for token in sentence:
-        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
-            subject = token
-        elif token.dep_ == DependencyLabel.ROOT.value:
-            root = token
-        elif token.dep_ == DependencyLabel.DIRECT_OBJECT.value:
-            direct_object = token
-        elif token.dep_ == DependencyLabel.DATIVE.value:
-            indirect_object = token
-        elif token.ent_type_ == EntityLabel.CARDINAL.value:
-            quantity = token
+    for tk in sentence:
+        tk: Token
+        if tk.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            subject = tk
+        elif tk.dep_ == DependencyLabel.ROOT.value:
+            root = tk
+        elif tk.dep_ == DependencyLabel.DIRECT_OBJECT.value:
+            direct_object = tk
+        elif tk.dep_ == DependencyLabel.DATIVE.value:
+            indirect_object = tk
+        elif tk.ent_type_ == EntityLabel.CARDINAL.value:
+            quantity = tk
 
     assert subject is not None, '[b3] Sentence must contain subject'
     assert root is not None, '[b3] Sentence must contain verb'
@@ -187,7 +190,6 @@ def br3_ditransitive_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase
     if subject.pos_ != POSLabel.U_PRONOUN.value:
         thsl_sentence.insert(0, subject.lemma_)
 
-    # print("new b3 --> ", thsl_sentence)
     return thsl_sentence
 
 
@@ -212,14 +214,15 @@ def br4_locative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     assert len(prep_phrases_of_place) < 2, f'[b4] Expected to find 1 perp phrase but found {len(prep_phrases_of_place)}'
     location = prep_phrases_of_place[0][1]
 
-    for token in sentence:
-        if token.dep_ == DependencyLabel.ROOT.value:
-            root = token
-        elif token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
-            subject = token
-        elif token.lemma_ in special_prep:
+    for tk in sentence:
+        tk: Token
+        if tk.dep_ == DependencyLabel.ROOT.value:
+            root = tk
+        elif tk.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            subject = tk
+        elif tk.lemma_ in special_prep:
             set_scene = True
-            prep = token
+            prep = tk
 
     assert subject is not None, '[br4] Sentence must contain subject'
     assert root is not None, '[br4] Sentence must contain verb'
@@ -255,11 +258,12 @@ def br13_stative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     """
     subject: TempToken = None
     adj_complement: TempToken = None
-    for token in sentence:
-        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
-            subject = token
-        elif token.dep_ == DependencyLabel.ADJECTIVAL_COMPLEMENT.value:
-            adj_complement = token
+    for tk in sentence:
+        tk: Token
+        if tk.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            subject = tk
+        elif tk.dep_ == DependencyLabel.ADJECTIVAL_COMPLEMENT.value:
+            adj_complement = tk
 
     assert subject is not None, '[br13] Sentence must contain subject'
     assert adj_complement is not None, '[br13] Sentence must contain adjectival complement'
@@ -275,16 +279,6 @@ def br13_stative_sentence(sentence: TSentence) -> List[Union[str, ThSLPhrase]]:
     thsl_sentence = [thsl_subject, adj_complement.lemma_]
     return thsl_sentence
 
-
-# TODO: append WH at the end of the translated sentence
-def cf3_question(ori_sentence: TSentence, trans_sentence: List[Union[str, ThSLPhrase]]):
-    """
-    pg.111
-    """
-    wh: str = ori_sentence[0].lemma_
-    trans_sentence.append(wh.upper())
-    print("==>", trans_sentence)
-    return trans_sentence.append(wh.upper())
 
 # TODO: define the rules for all types of sentence
 # I got the kids their favorite toys.

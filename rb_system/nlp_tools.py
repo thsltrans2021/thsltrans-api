@@ -5,6 +5,8 @@ from typing import List, Tuple
 from rb_system.types import EntityLabel, POSLabel, DependencyLabel
 
 import spacy
+import logging
+
 
 """
 python -m doctest -v rb_system/nlp_tools.py
@@ -30,7 +32,7 @@ def perform_nlp_process(text_data: TextData):
         for sentence in sentences:
             sentence_token = remove_punctuations(sentence)
             sentence_token = _merge_token_by_entity(sentence_token)
-            print(f"sentence_token: {sentence_token}")
+            logging.debug(f'{sentence_token=}')
             processed_paragraph.append(sentence_token)
         text_data.processed_data.append(processed_paragraph)
 
@@ -228,8 +230,8 @@ def is_locative_sentence(sentence: List[Token]):
 
     prep_phrases = retrieve_preposition_phrases(sentence)
     prep_phrases_of_place = filter_preposition_of_place(prep_phrases)
-    print("prep phrase: ", prep_phrases)
-    print("prep of place", prep_phrases_of_place)
+    # print("prep phrase: ", prep_phrases)
+    # print("prep of place", prep_phrases_of_place)
     return len(prep_phrases_of_place) > 0
 
 
@@ -456,7 +458,6 @@ def remove_punctuations(sentence: List[Token]) -> List[Token]:
 
     Note: it also removes "-" from "work-from-home" as well ;(
     """
-    print(f"before: {sentence}")
     return [token for token in sentence if not token.is_punct]
 
 
