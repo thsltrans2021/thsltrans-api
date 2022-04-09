@@ -5,6 +5,8 @@ from typing import List, Tuple
 from rb_system.types import EntityLabel, POSLabel, DependencyLabel
 
 import spacy
+import logging
+
 
 """
 python -m doctest -v rb_system/nlp_tools.py
@@ -30,7 +32,7 @@ def perform_nlp_process(text_data: TextData):
         for sentence in sentences:
             sentence_token = remove_punctuations(sentence)
             sentence_token = _merge_token_by_entity(sentence_token)
-            print(f"sentence_token: {sentence_token}")
+            logging.debug(f'{sentence_token=}')
             processed_paragraph.append(sentence_token)
         text_data.processed_data.append(processed_paragraph)
 
@@ -233,6 +235,47 @@ def is_locative_sentence(sentence: List[Token]):
     return len(prep_phrases_of_place) > 0
 
 
+def is_wh_question(sentence: List[Token]) -> bool:
+    if not _is_sentence(sentence):
+        return False
+
+    first_token = sentence[0]
+    if first_token.tag_ == POSLabel.P_WH_ADVERB.value:
+        return True
+    elif first_token.tag_ == POSLabel.P_WH_PRONOUN.value:
+        return True
+
+    return False
+
+
+def _has_stative_verb(sentence: List[Token]) -> bool:
+    """
+    True if the sentence has v.to be e.g. The shirt is blue
+    """
+    for token in sentence:
+        if token.pos_ == POSLabel.U_AUXILIARY.value:
+            return True
+    return False
+
+
+def is_stative_sentence(sentence: List[Token]) -> bool:
+    return _has_stative_verb(sentence)
+
+
+def is_complex_sentence(sentence: List[Token]):
+    """
+    True of the sentence has conjunction e.g. and, that, because
+    """
+    for token in sentence:
+        if token.tag_ == POSLabel.P_WH_DETERMINER.value:
+            return True
+        elif token.pos_ == POSLabel.U_COORDINATING_CONJUNCTION.value:
+            return True
+        elif token.pos_ == POSLabel.U_SUBORDINATING_CONJUNCTION.value:
+            return True
+    return False
+
+
 def retrieve_preposition_phrases(sentence: List[Token]) -> List[Tuple[Token, Token, int, int]]:
     """
     Finds preposition phrases from the sentence and return them
@@ -252,7 +295,7 @@ def retrieve_preposition_phrases(sentence: List[Token]) -> List[Tuple[Token, Tok
     return prep_phrases
 
 
-def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]]):
+def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]]) -> List[Tuple[Token, Token, int, int]]:
     """
     Returns a list of preposition phrases that are not considered as prepositional phrase of time.
     """
@@ -267,6 +310,7 @@ def filter_preposition_of_place(prep_phrases: List[Tuple[Token, Token, int, int]
             if entity_label in entity_types:
                 continue
         except ValueError:
+            # continue      # detect only what Spacy model can
             pass
 
         if prep_p[1].pos_ == POSLabel.U_PRONOUN.value:
@@ -310,6 +354,11 @@ def retrieve_entities(sentence: List[Token], entity_types: List[EntityLabel]) ->
             continue
 
     return entities
+
+
+def retrieve_noun_phrases(sentence: List[Token]) -> List[str]:
+    s_doc = nlp(" ".join([t.text for t in sentence]))
+    return [np for np in s_doc.noun_chunks]
 
 
 def _merge_token_by_entity(sentence: List[Token]) -> List[Token]:
@@ -364,13 +413,51 @@ def _merge_token_by_entity(sentence: List[Token]) -> List[Token]:
     return new_sentence
 
 
+def filter_relative_clause(sentence: List[Token]) -> Tuple[List[Token], int, int]:
+    """
+    >>> filter_relative_clause(nlp('The cat that attacks us is scary.')[:])
+    ([that, attacks, us], 2, 4)
+    >>> filter_relative_clause(nlp('I like the person who was nice to me.')[:])
+    ([who, was, nice, to, me], 4, 8)
+    >>> filter_relative_clause(nlp('I hate the dog that bit me.')[:])
+    ([that, bit, me], 4, 6)
+    >>> filter_relative_clause(nlp('I like the bike that my father gave me.')[:])
+    ([that, my, father, gave, me], 4, 8)
+    """
+    relative_clause: List[Token] = []
+    start_idx = len(sentence)
+    end_idx = 0
+    for idx, token in enumerate(sentence):
+        if token.is_punct:
+            continue
+
+        # handle relative clause of subject
+        if token.dep_ == DependencyLabel.NOMINAL_SUBJECT.value:
+            if token.tag_ == POSLabel.P_WH_DETERMINER.value:
+                start_idx = idx
+            elif token.tag_ == POSLabel.P_WH_PRONOUN.value:
+                start_idx = idx
+        # handle relative clause of object
+        elif token.dep_ == DependencyLabel.DATIVE.value:
+            if token.tag_ == POSLabel.P_WH_DETERMINER.value:
+                start_idx = idx
+        elif token.dep_ == DependencyLabel.ROOT.value:
+            if idx > start_idx:
+                break
+
+        if idx >= start_idx:
+            relative_clause.append(token)
+            end_idx = idx
+
+    return relative_clause, start_idx, end_idx
+
+
 def remove_punctuations(sentence: List[Token]) -> List[Token]:
     """
     Remove punctuations (e.g. '.', '?') from the given sentence.
 
     Note: it also removes "-" from "work-from-home" as well ;(
     """
-    print(f"before: {sentence}")
     return [token for token in sentence if not token.is_punct]
 
 
@@ -391,6 +478,19 @@ def remove_unnecessary_tokens(sentence: List[Token]) -> List[Token]:
             continue
         result.append(token)
     return result
+
+
+def noun_phrase_to_adjectives(noun_phrase: Span) -> List[Token]:
+    adjectives = []
+    for idx, t in enumerate(noun_phrase):
+        t: Token
+        if idx == len(noun_phrase) - 1:
+            break
+        elif t.pos_ == POSLabel.U_DETERMINER.value:
+            continue
+        else:
+            adjectives.append(t)
+    return adjectives
 
 
 if __name__ == '__main__':
@@ -426,14 +526,21 @@ if __name__ == '__main__':
                     # except IndexError:
                     #     print(f'{token.text} has neighbor: {token.nbor()}')
             print()
+            print(f'Is a question? {is_wh_question(new_s)}')
             print(f'Is a single word? {is_single_word(new_s)}')
             print(f'Is a phrase? {is_phrase(new_s)}')
+            print(f'Is a complex sentence? {is_complex_sentence(new_s)}')
+            print(f'filter relative clause: {filter_relative_clause(new_s)}')
             print(f'Is transitive sentence? {is_transitive_sentence(new_s)}')
             print(f'Is intransitive sentence? {is_intransitive_sentence(new_s)}')
             print(f'Is ditransitive sentence? {is_ditransitive_sentence(new_s)}')
             print(f'Is locative sentence? {is_locative_sentence(new_s)}')
 
             print(f'Noun phrase: {", ".join([str(n) for n in s.noun_chunks])}')
+
+            new_np = retrieve_noun_phrases(new_s)
+            print(f'[2] Noun phrase: {new_np}')
+            # print(f'[3] NP types: {[[type(n) for n in np] for np in new_np]}')
 
         print('\nEntities')
         for ent in doc.ents:

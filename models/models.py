@@ -140,4 +140,25 @@ class ThSLPrepositionPhrase:
         return f'ThSLPrepositionPhrase({self.preposition_subj_cl},{self.preposition},{self.preposition_obj_cl})'
 
 
-ThSLPhrase = Union[ThSLVerbPhrase, ThSLPrepositionPhrase, ThSLClassifier]
+class ThSLNounPhrase:
+    def __init__(self, noun: Token, adj_lst: Optional[List[Token]] = None):
+        self.noun = noun
+        self.adj_list = []
+
+        if adj_lst is not None:
+            self.adj_list = adj_lst
+
+    def __repr__(self):
+        return f'ThSLNounPhrase(noun={self.noun.lemma_},ctx={self.adj_list})'
+
+    def __eq__(self, other):
+        if type(other) == type(self):
+            return self.noun == other.noun and self.adj_list == other.adj_list
+        else:
+            return self.noun.lemma_ == other
+
+    def add_adjectives(self, adj_lst: List[Token]):
+        self.adj_list = self.adj_list + adj_lst
+
+
+ThSLPhrase = Union[ThSLVerbPhrase, ThSLPrepositionPhrase, ThSLClassifier, ThSLNounPhrase]

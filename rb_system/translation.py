@@ -29,24 +29,93 @@ def translate_english_to_sign_gloss(text_data: TextData) -> List[List[List[str]]
 
 def apply_rules(sentence: TSentence) -> List[str]:
     """Return a list of ThSL glosses"""
-    thsl_words: List[Union[str, ThSLPhrase]]
-    if is_single_word(sentence):
-        thsl_words = br0_single_word(sentence)
-    elif is_phrase(sentence):
-        thsl_words = br0_phrase(sentence)
-    elif is_locative_sentence(sentence):
-        thsl_words = br4_locative_sentence(sentence)
-    elif is_transitive_sentence(sentence):
-        thsl_words = br1_transitive_sentence(sentence)
-    elif is_intransitive_sentence(sentence):
-        thsl_words = br2_intransitive_sentence(sentence)
-    elif is_ditransitive_sentence(sentence):
-        thsl_words = br3_ditransitive_sentence(sentence)
+    # handle complex sentence here
+    if is_complex_sentence(sentence):
+        relative_clause_data = filter_relative_clause(sentence)
+        if len(relative_clause_data[0]) > 0:
+            thsl_words = apply_rule_to_sentence_with_relative_clause(sentence, relative_clause_data)
+        else:
+            logging.info(f'Not supported complex sentence: {sentence}')
+            thsl_words = rearrange_basic_sentence(sentence)
+    elif is_wh_question(sentence):
+        thsl_words = apply_rule_to_wh_question(sentence)
     else:
-        thsl_words = ['not supported']
+        thsl_words = rearrange_basic_sentence(sentence)
 
     sign_glosses = map_english_to_sign_gloss(thsl_words)
     return sign_glosses
+
+
+def apply_rule_to_sentence_with_relative_clause(sentence: List[Token], relcl_data: Tuple[List[Token], int, int]) -> List[Union[str, ThSLPhrase]]:
+    # translate relative clause
+    relcl, relcl_start_idx, relcl_end_idx = relcl_data
+    relcl_subject: Optional[Token] = None
+    for idx, tk in enumerate(sentence):
+        if idx + 1 == relcl_start_idx:
+            relcl_subject = tk
+
+    assert relcl_subject is not None, f'[relcl_rule] Cannot find the real subject of relative clause {relcl}'
+    relcl.pop(0)
+    relcl.insert(0, relcl_subject)
+    thsl_relcl = rearrange_basic_sentence(relcl)
+    # print(f'--> {relcl=}\n--> {thsl_relcl=}')
+
+    root_sentence = sentence[0:relcl_start_idx] + sentence[relcl_end_idx+1:len(sentence)]
+    thsl_root_sentence = rearrange_basic_sentence(root_sentence)
+    # print(f'--> {root_sentence=}\n--> {thsl_root_sentence=}')
+
+    start_idx: Optional[int] = None
+    duplicated_subj_idx: Optional[int] = None
+    for idx, root_t in enumerate(thsl_root_sentence):
+        for relcl_idx, relcl_t in enumerate(thsl_relcl):
+            if root_t == relcl_t:
+                start_idx = idx
+                duplicated_subj_idx = relcl_idx
+    assert start_idx is not None, f'[relcl_rule] Unexpectedly no matched subject'
+
+    # remove subject that is duplicated with the root sentence
+    thsl_relcl.remove(thsl_relcl[duplicated_subj_idx])
+    thsl_sentence = thsl_root_sentence[0:start_idx+1] + thsl_relcl + thsl_root_sentence[start_idx+1:len(thsl_root_sentence)]
+    # print(f'--> {thsl_sentence=}')
+    return thsl_sentence
+
+
+def apply_rule_to_wh_question(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
+    wh: Token = sentence.pop(0)
+    sentence.pop(0)     # pop v.to do or v.to be
+    thsl_root_sentence = rearrange_basic_sentence(sentence)
+    thsl_sentence = thsl_root_sentence + [wh.lemma_]
+    return thsl_sentence
+
+
+def rearrange_basic_sentence(sentence: List[Token]) -> List[Union[str, ThSLPhrase]]:
+    if is_single_word(sentence):
+        result = br0_single_word(sentence)
+        rule_name = '[br0 w]'
+    elif is_phrase(sentence):
+        result = br0_phrase(sentence)
+        rule_name = '[br0 p]'
+    elif is_locative_sentence(sentence):
+        result = br4_locative_sentence(sentence)
+        rule_name = '[br4]'
+    elif is_stative_sentence(sentence):
+        result = br13_stative_sentence(sentence)
+        rule_name = '[br13]'
+    elif is_transitive_sentence(sentence):
+        result = br1_transitive_sentence(sentence)
+        rule_name = '[br1]'
+    elif is_intransitive_sentence(sentence):
+        result = br2_intransitive_sentence(sentence)
+        rule_name = '[br2]'
+    elif is_ditransitive_sentence(sentence):
+        result = br3_ditransitive_sentence(sentence)
+        rule_name = '[br3]'
+    else:
+        result = ['not supported']
+        rule_name = '[not supported]'
+
+    logging.debug(f'{rule_name} {result=}')
+    return result
 
 
 def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
@@ -69,12 +138,14 @@ def map_english_to_sign_gloss(words: List[Union[str, ThSLPhrase]]) -> List[str]:
         elif isinstance(word, ThSLVerbPhrase):
             gloss = retrieve_sign_gloss_for_verb_with_context(word)
             thsl_glosses.append(gloss)
-        elif '-' in word:
-            print("Ugly search!", word)
-            thsl_glosses.append(f'[no map] {word}')
+        elif isinstance(word, ThSLNounPhrase):
+            glosses = retrieve_sign_gloss_for_noun_phrase(word)
+            thsl_glosses = thsl_glosses + glosses
         else:
             gloss = retrieve_sign_gloss_for_noun(word)
             thsl_glosses.append(gloss)
+    logging.info(f'Finished mapping: {words}')
+    logging.debug(f'[result] {thsl_glosses=}')
     return thsl_glosses
 
 
@@ -173,6 +244,54 @@ def retrieve_sign_gloss_for_noun(word) -> str:
     return f"no gloss of '{word}' is found in the dictionary"
 
 
+def retrieve_sign_gloss_for_noun_phrase(noun_phrase: ThSLNounPhrase) -> List[str]:
+    """
+    a young mouse
+    a young and beautiful girl
+    """
+    noun = noun_phrase.noun
+    candidate_words = Eng2Sign.objects(english=noun.lemma_)
+    assert len(candidate_words) <= 1, f'[n_with_ctx] duplicated `english` key: {noun.lemma_}'
+
+    if len(candidate_words) == 0:
+        message = f"Noun '{noun.lemma_}' is not found in the dictionary"
+        logging.info(message)
+        return [message]
+
+    result: List[SignGloss] = []
+
+    # select sign gloss that has the matched POS
+    noun_glosses = candidate_words[0].sign_glosses
+    for ng in noun_glosses:
+        ng: SignGloss
+        if ng.lang != 'en':
+            continue
+        if len(noun_glosses) == 1:
+            result.append(ng)
+            break
+        elif ng.pos == 'noun' or ng.pos == 'pronoun':
+            result.append(ng)
+            break
+
+    # select sign gloss that has the matched POS
+    noun_adj_lst = noun_phrase.adj_list
+    unmatched_adj = []
+    for adj in noun_adj_lst:
+        adj_words = Eng2Sign.objects(english=adj.lemma_)
+        assert len(adj_words) <= 1, f'[n_with_ctx] duplicated `english` key: {adj.lemma_}'
+        if len(adj_words) == 0:
+            unmatched_adj.append(adj)
+            continue
+        for adj_g in adj_words[0].sign_glosses:
+            adj_g: SignGloss
+            if adj_g.pos == 'adjective' and adj_g.lang == 'en':
+                result.append(adj_g)
+                break
+
+    result_glosses = [g.gloss for g in result]
+    return result_glosses + [f'not found {u.lemma_}' for u in unmatched_adj]
+
+
 def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> str:
     """
     he-walk -> person-walk
@@ -191,13 +310,22 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
 
     verb_contexts = verb_phrase.contexts
     # print("attr --> ", verb_contexts)
+    additional_ctx: List[set] = []
 
-    unwanted_pos = ["verb", "classifier", "preposition"]
+    unwanted_pos = ['verb', 'classifier', 'preposition']
     context_glosses: List[Tuple[int, SignGloss]] = []
     related_words = []
     related_words_idx = 0
-    for context in verb_contexts.values():
-        result_ctx = _retrieve_word(context.lemma_)
+    for ctx_key, ctx_val in verb_contexts.items():
+        ctx_val: Token
+        # consider additional context e.g. subject is plural
+        if ctx_val.tag_ == POSLabel.P_PLURAL_NOUN.value:
+            if ctx_key == 'subject':
+                additional_ctx.append({'multiple subjects'})
+            elif ctx_key == 'direct_obj' or ctx_key == 'indirect_obj':
+                additional_ctx.append({'multiple objects'})
+
+        result_ctx = _retrieve_word(ctx_val.lemma_)
         if result_ctx is None:
             continue
 
@@ -205,7 +333,7 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
         for gloss in result_ctx.sign_glosses:
             if gloss.pos in unwanted_pos:
                 continue
-            elif gloss.lang == "en":
+            elif gloss.lang == 'en':
                 ctx_glosses.append(gloss)
 
         if len(ctx_glosses) > 0:
@@ -218,20 +346,24 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
         gloss: SignGloss
         for gloss in candidate_words[0].sign_glosses:
             try:
-                if gloss.priority >= 1 and gloss.lang == "en":
+                if gloss.priority >= 1 and gloss.lang == 'en':
                     return gloss.gloss
             # no priority field -> return whatever
             except TypeError:
-                if gloss.lang == "en":
+                if gloss.lang == 'en':
                     return gloss.gloss
 
     # append all gloss' ctx of all words related to verb (sub, iobj, dobj, etc.)
-    ctx_combinations = []
+    ctx_combinations: List[set] = []
     for word_idx, ctx_gloss in context_glosses:
         ctx_gloss: SignGloss
         all_contexts = ctx_gloss.contexts + related_words[word_idx].contexts
         combinations = _get_context_combinations(all_contexts)
         ctx_combinations = ctx_combinations + combinations
+
+    # concat with additional contexts
+    ctx_combinations = ctx_combinations + additional_ctx
+    logging.debug(f'{ctx_combinations=}')
 
     possible_matches = _count_possible_matches(candidate_words[0], ctx_combinations)
     assert len(possible_matches) > 0, \
@@ -253,9 +385,13 @@ def retrieve_sign_gloss_for_verb_with_context(verb_phrase: ThSLVerbPhrase) -> st
                 print(result.gloss, result.priority)
                 max_priority = result.priority
                 final_result = result
+        if final_result is None:
+            logging.info(f'[v_with_ctx] No final result for {results}, choose the first result')
+            final_result = results[0][0]
     else:
         final_result = results[0][0]
 
+    assert final_result is not None, f'[v_with_ctx] unexpectedly no final result for {results}'
     return final_result.gloss
 
 
@@ -341,19 +477,19 @@ def retrieve_sign_gloss_for_prep_with_context(prep_phrase: ThSLPrepositionPhrase
     prep: Eng2Sign = search_results[0]
     prep_subj_ctx_com = _get_context_combinations(prep_subj.contexts)
     prep_obj_ctx_com = _get_context_combinations(prep_obj.contexts)
-    print("prep subj com -> ", prep_subj_ctx_com)
-    print("prep obj com -> ", prep_obj_ctx_com)
+    logging.debug(f'{prep_subj_ctx_com=}')
+    logging.debug(f'{prep_obj_ctx_com=}')
 
     possible_matches_subj = _count_possible_matches(prep, prep_subj_ctx_com)
     possible_matches_obj = _count_possible_matches(prep, prep_obj_ctx_com)
-    print("matches (subj) --> ", possible_matches_subj)
-    print("matches (obj) --> ", possible_matches_obj)
+    logging.debug(f'{possible_matches_subj=}')
+    logging.debug(f'{possible_matches_obj=}')
 
     # then find gloss that matches both subj's and obj's contexts
     highest_matched_subj = _filter_highest_matched_results(possible_matches_subj)
     highest_matched_obj = _filter_highest_matched_results(possible_matches_obj)
-    print("h matches (subj) --> ", highest_matched_subj)
-    print("h matches (obj) --> ", highest_matched_obj)
+    logging.debug(f'{highest_matched_subj=}')
+    logging.debug(f'{highest_matched_obj=}')
 
     # assume that highest matched of subj and obj always overlaps each other
     final_result: Optional[SignGloss] = None
