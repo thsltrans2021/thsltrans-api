@@ -209,7 +209,7 @@ def _count_possible_matches(target_word: Eng2Sign, related_ctx_combinations: Lis
                 match_count += 1
         possible_matches.append((gloss, match_count))
 
-    print("matches --> ", possible_matches)
+    logging.debug(f'{possible_matches=}')
     return possible_matches
 
 
@@ -223,7 +223,7 @@ def _filter_highest_matched_results(possible_matches: List[Tuple[SignGloss, int]
                 results = [match]
             elif match[1] == max_match_count:
                 results.append(match)
-    print("results --> ", [r[0].gloss for r in results])
+    logging.debug(f'highest match {[r[0].gloss for r in results]}')
     return results
 
 
